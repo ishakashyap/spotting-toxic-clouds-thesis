@@ -76,7 +76,7 @@ if __name__ == '__main__':
             Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
 
-        train_folder = "./videos/train"
+        train_folder = "./train"
         
         train = LoadDataset(train_folder, transform=train_transforms)
         print(len(train))
