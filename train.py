@@ -1,6 +1,7 @@
 import os
 import argparse
 import time
+import gc
 import random
 import numpy as np
 import pandas as pd
@@ -64,7 +65,7 @@ if __name__ == '__main__':
 
     if args.mode == 'train':
         train_transforms = Compose([
-            Resize(256), 
+            Resize(128), 
             RandomApply([GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.5),
             RandomApply([ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.1)], p=0.8),
             RandomGrayscale(p=0.2),
@@ -75,30 +76,33 @@ if __name__ == '__main__':
             Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
 
-        train_folder = "./train"
+        train_folder = "./videos/train"
         
         train = LoadDataset(train_folder, transform=train_transforms)
         print(len(train))
-        train_dataloader = DataLoader(train, batch_size=1, shuffle=True)
+        train_dataloader = DataLoader(train, batch_size=1, shuffle=True, num_workers=args.workers)
 
-        iterloader = iter(train_dataloader)
-        for i in range(1, 99):
-            try:
-                batch = next(iterloader)
-                data, labels = batch
-                data, labels = data.to(device), labels.to(device)
+        for epoch in range(args.start_epoch, args.epochs + 1):
+            for i, data in enumerate(train_dataloader, 0):
+                # Move data to the correct device
+                data = data.to(device)
 
-                print("i")
-            except StopIteration:
-                iterloader = iter(train_dataloader)
-                batch = next(iterloader)
-                data, labels = batch
-                data, labels = data.to(device), labels.to(device)
+                # Example forward pass (model training steps should go here)
+                # output = model(data)
+                # loss = loss_function(output, labels)
+                # optimizer.zero_grad()
+                # loss.backward()
+                # optimizer.step()
 
-            
-        
-        print('done')
-        # for data in enumerate(train_dataloader):
-        #     print("hi")
-        #     break
+                # Clear memory
+                del data  # Delete the variables to free up memory
+                torch.cuda.empty_cache()  # Clear unused memory
 
+                if i % args.pf == 0:
+                    print(f'Epoch: {epoch}, Batch: {i}')
+                    # Optionally monitor memory usage at intervals
+                    # print(torch.cuda.memory_summary())
+
+            gc.collect()  # Explicitly call garbage collection at the end of an epoch (optional)
+
+        print('Training complete')
