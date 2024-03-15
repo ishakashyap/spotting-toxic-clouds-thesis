@@ -65,7 +65,7 @@ if __name__ == '__main__':
 
     if args.mode == 'train':
         train_transforms = Compose([
-            Resize(128), 
+            Resize(64), 
             RandomApply([GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.5),
             RandomApply([ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.1)], p=0.8),
             RandomGrayscale(p=0.2),
@@ -76,7 +76,7 @@ if __name__ == '__main__':
             Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
 
-        train_folder = "./train"
+        train_folder = "./videos/train"
         
         train = LoadDataset(train_folder, transform=train_transforms)
         print(len(train))
