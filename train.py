@@ -55,9 +55,12 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
 
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+
     if args.model == 'r3d':
         weights = R3D_18_Weights.DEFAULT
-        model = r3d_18(weights=weights).eval()
+        model = r3d_18(weights=weights).to(device).eval()
 
     if args.mode == 'train':
         train_transforms = Compose([
@@ -72,7 +75,7 @@ if __name__ == '__main__':
             Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
 
-        train_folder = "C:/Users/isha0/spotting-toxic-clouds/videos/train2"
+        train_folder = "./train"
         
         train = LoadDataset(train_folder, transform=train_transforms)
         print(len(train))
@@ -82,12 +85,19 @@ if __name__ == '__main__':
         for i in range(1, 99):
             try:
                 batch = next(iterloader)
+                data, labels = batch
+                data, labels = data.to(device), labels.to(device)
+
                 print("i")
             except StopIteration:
                 iterloader = iter(train_dataloader)
                 batch = next(iterloader)
+                data, labels = batch
+                data, labels = data.to(device), labels.to(device)
+
             
-            print("Iteration ", i)
+        
+        print('done')
         # for data in enumerate(train_dataloader):
         #     print("hi")
         #     break
