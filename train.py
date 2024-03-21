@@ -31,9 +31,9 @@ class ProjectionHead(nn.Module):
 class ModifiedR3D(nn.Module):
     def __init__(self):
         super(ModifiedR3D, self).__init__()
-        self.weights = R3D_18_Weights.DEFAULT
-        self.model = r3d_18(weights=self.weights).to(device).eval()
-        # self.pretrained_model = r3d_18(pretrained=False, progress=True)
+        # self.weights = R3D_18_Weights.DEFAULT
+        # self.model = r3d_18(weights=self.weights).to(device).eval()
+        self.pretrained_model = r3d_18(pretrained=False, progress=True)
         self.model.fc = nn.Identity()  # Remove the final fully connected layer
         self.projection_head = ProjectionHead(input_dim=512, hidden_dim=512, output_dim=128)
 
@@ -150,7 +150,7 @@ if __name__ == '__main__':
         # weights = R3D_18_Weights.DEFAULT
         # model = r3d_18(weights=weights).to(device).eval()
         model = ModifiedR3D().to(device)
-        optimizer = optim.Adam(model.parameters(), lr=1e-4)
+        optimizer = optim.Adam(model.parameters(), lr=1e-2)
 
     if args.mode == 'train':
         train_transforms = Compose([
