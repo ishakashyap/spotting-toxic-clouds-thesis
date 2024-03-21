@@ -33,7 +33,7 @@ class ModifiedR3D(nn.Module):
         super(ModifiedR3D, self).__init__()
         # self.weights = R3D_18_Weights.DEFAULT
         # self.model = r3d_18(weights=self.weights).to(device).eval()
-        self.pretrained_model = r3d_18(pretrained=False, progress=True)
+        self.model = r3d_18(pretrained=False, progress=True)
         self.model.fc = nn.Identity()  # Remove the final fully connected layer
         self.projection_head = ProjectionHead(input_dim=512, hidden_dim=512, output_dim=128)
 
