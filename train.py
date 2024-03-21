@@ -165,7 +165,7 @@ if __name__ == '__main__':
             Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
 
-        train_folder = "./train"
+        train_folder = "./train_full"
         dataset = SimCLRDataset(train_folder, transform=train_transforms)
         train_loader = DataLoader(dataset, batch_size=2, shuffle=True)
 
