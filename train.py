@@ -34,11 +34,11 @@ class ModifiedR3D(nn.Module):
         self.weights = R3D_18_Weights.DEFAULT
         self.model = r3d_18(weights=self.weights).to(device).eval()
         # self.pretrained_model = r3d_18(pretrained=False, progress=True)
-        self.pretrained_model.fc = nn.Identity()  # Remove the final fully connected layer
+        self.model.fc = nn.Identity()  # Remove the final fully connected layer
         self.projection_head = ProjectionHead(input_dim=512, hidden_dim=512, output_dim=128)
 
     def forward(self, x):
-        features = self.pretrained_model(x)
+        features = self.model(x)
         projections = self.projection_head(features)
         return projections
 
