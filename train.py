@@ -3,6 +3,7 @@ import argparse
 import time
 import gc
 import random
+import json
 import numpy as np
 import pandas as pd
 import torch
@@ -15,6 +16,7 @@ from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normal
 from torchvision.transforms import functional as F
 from torchvision.models.video import r3d_18, R3D_18_Weights
 from PIL import Image
+from sklearn.metrics import accuracy_score
 
 class ProjectionHead(nn.Module):
     def __init__(self, input_dim=512, hidden_dim=512, output_dim=128):
@@ -41,6 +43,53 @@ class ModifiedR3D(nn.Module):
         features = self.model(x)
         projections = self.projection_head(features)
         return projections
+
+class ValDataset(Dataset):
+    def __init__(self, folder_path, labels_json_path, transform=None):
+        self.folder_path = folder_path
+        self.transform = transform
+        
+        # Load video filenames
+        self.video_files = os.listdir(folder_path)
+        
+        # Load labels from JSON file
+        self.labels = self._load_labels(labels_json_path)
+
+    def _load_labels(self, labels_json_path):
+        with open(labels_json_path, 'r') as f:
+            labels_json = json.load(f)
+        # Assuming the JSON structure is a list of dicts with 'file_name' and 'label' keys
+        labels = {item['file_name']: item['label_state_admin'] for item in labels_json}
+        return labels
+
+    def __len__(self):
+        return len(self.video_files)
+
+    def __getitem__(self, idx):
+        video_file = self.video_files[idx]
+        video_path = os.path.join(self.folder_path, video_file)
+        
+        # Load the video
+        video, _, _ = read_video(video_path, pts_unit='sec')
+        video = video.permute(0, 3, 1, 2)  # Convert to (T, C, H, W)
+        
+        # Apply transformation to get a single view of the video
+        view = self.transform_video(video)
+        
+        # Get the label for the current video, default to None if not found
+        label = self.labels.get(video_file, None)
+        
+        return view, label
+
+    def transform_video(self, video):
+        transformed_frames = []
+        for frame in video:
+            frame = F.to_pil_image(frame)
+            if self.transform:
+                frame = self.transform(frame)
+            transformed_frames.append(frame)
+        video_tensor = torch.stack(transformed_frames)
+        return video_tensor.permute(1, 0, 2, 3) 
 
 class SimCLRDataset(Dataset):
     def __init__(self, folder_path, transform=None):
@@ -72,6 +121,21 @@ class SimCLRDataset(Dataset):
         video_tensor = torch.stack(transformed_frames)
         return video_tensor.permute(1, 0, 2, 3)  # Reshape to (C, T, H, W) for model
 
+def validate(model, val_loader, device):
+    model.eval()  # Set the model to evaluation mode
+    all_preds = []
+    all_labels = []
+    with torch.no_grad():  # Disable gradient computation
+        for inputs, labels in val_loader:
+            inputs = inputs.to(device)
+            outputs = model(inputs)
+            _, preds = torch.max(outputs, 1)  # Get the predictions
+            all_preds.extend(preds.cpu().numpy())
+            all_labels.extend(labels.numpy())
+    accuracy = accuracy_score(all_labels, all_preds)
+    model.train()  # Set the model back to training mode
+    return accuracy
+
 def nt_xent_loss(z_i, z_j, temperature=0.5):
     """
     Calculate the normalized temperature-scaled cross entropy loss.
@@ -83,43 +147,6 @@ def nt_xent_loss(z_i, z_j, temperature=0.5):
     loss_fct = nn.CrossEntropyLoss()
     loss = loss_fct(cos_sim, labels)
     return loss
-
-# class LoadDataset(Dataset):
-#     def __init__(self, folder_path, transform=None):
-#         self.folder_path = folder_path
-#         self.video_files = os.listdir(folder_path)
-#         self.transform = transform
-
-#     def __len__(self):
-#         return len(self.video_files)
-
-#     def __getitem__(self, idx):
-#         video_file = self.video_files[idx]
-#         video_path = os.path.join(self.folder_path, video_file)
-#         video, audio, info = read_video(video_path, pts_unit='sec')
-
-#         video = video.permute(0, 3, 1, 2)
-#         print(video.size)
-    
-#         transformed_frames = []
-#         for frame in video:
-#             # frame = video[t]  # frame is now in shape (C, H, W)
-#             # frame = frame.float() / 255.0  # Normalize to [0, 1]
-#             frame = F.to_pil_image(frame)  # Convert to PIL Image
-
-#             if self.transform is not None:
-#                 frame = self.transform(frame)  # Apply transformations
-
-#             # frame = F.to_tensor(frame)  # Convert back to tensor
-#             transformed_frames.append(frame)
-
-#         video = torch.stack(transformed_frames)
-
-#         print(video.size())
-
-#         video = video.permute(1, 0, 2, 3) 
-#         print(video.size())
-#         return video
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Video Classification')
@@ -165,15 +192,20 @@ if __name__ == '__main__':
             Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
 
-        train_folder = "./train_full"
+        train_folder = "./train"
+        val_folder = "./val_labeled"
+        label_folder = "./metadata_02242020.json"
         dataset = SimCLRDataset(train_folder, transform=train_transforms)
-        train_loader = DataLoader(dataset, batch_size=2, shuffle=True)
+        train_loader = DataLoader(dataset, batch_size=20, shuffle=True)
+
+        val_dataset = ValDataset(val_folder, label_folder, transform=train_transforms)
+        val_loader = DataLoader(val_dataset, batch_size=20, shuffle=True)
 
         for epoch in range(args.epochs):
             for batch_idx, (view1, view2) in enumerate(train_loader):
                 view1, view2 = view1.to(device), view2.to(device)
                 repr1, repr2 = model(view1), model(view2)
-                # Implement or use an existing contrastive loss function
+                
                 loss = nt_xent_loss(repr1, repr2, temperature=0.5)
                 
                 optimizer.zero_grad()
@@ -182,33 +214,10 @@ if __name__ == '__main__':
                 
                 if batch_idx % args.pf == 0:
                     print(f"Epoch: {epoch}, Batch: {batch_idx}, Loss: {loss.item()}")
+                    
+            val_accuracy = validate(model, val_loader, device)
+            print(f'Epoch: {epoch}, Validation Accuracy: {val_accuracy}')
 
-        # train = LoadDataset(train_folder, transform=train_transforms)
-        # print(len(train))
-        # train_dataloader = DataLoader(train, batch_size=1, shuffle=True, num_workers=args.workers)
-        
-        # criterion = nn.MSELoss()
-        # optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.wd)
-
-        # for epoch in range(args.start_epoch, args.epochs + 1):
-        #     running_loss = 0.0
-        #     for i, inputs in enumerate(train_dataloader, 1):
-        #         inputs = inputs.to(device)
-
-        #         optimizer.zero_grad()
-        #         print("Input shape to model:", inputs.shape)
-        #         outputs = model(inputs)
-        #         # For self-supervised, you might compare outputs to inputs or use another form of self-supervision
-        #         loss = criterion(outputs, inputs)  # This is an example and likely needs adjustment
-        #         loss.backward()
-        #         optimizer.step()
-
-        #         running_loss += loss.item()
-
-        #         if i % args.pf == 0:
-        #             print(f'Epoch: {epoch}, Batch: {i}, Loss: {running_loss / i:.4f}')
-
-        #     print(f'Epoch {epoch} complete, Average Loss: {running_loss / len(train_dataloader):.4f}')
-        #     gc.collect()
+        # TODO: Implement val set and accuracy, save model every few epochs, save model for best val accuracy
 
         print('Training complete')
