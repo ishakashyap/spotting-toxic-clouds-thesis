@@ -130,22 +130,20 @@ class SimCLRDataset(Dataset):
         return video_tensor.permute(1, 0, 2, 3)  # Reshape to (C, T, H, W) for model
 
 def validate(model, val_loader, device):
-    try:
-        model.eval()  # Set the model to evaluation mode
-        all_preds = []
-        all_labels = []
-        with torch.no_grad():  # Disable gradient computation
-            for inputs, labels in val_loader:
-                print(labels)
-                inputs = inputs.to(device)
-                outputs = model(inputs)
-                _, preds = torch.max(outputs, 1)  # Get the predictions
-                all_preds.extend(preds.cpu().numpy())
-                all_labels.extend(labels.numpy())
-        accuracy = accuracy_score(all_labels, all_preds)
-        model.train()  # Set the model back to training mode
-    except Exception as e:
-        print(f"Error getting validation data: {e}")
+    model.eval()  # Set the model to evaluation mode
+    all_preds = []
+    all_labels = []
+    print("Here \n")
+    with torch.no_grad():  # Disable gradient computation
+        for inputs, labels in val_loader:
+            print(inputs)
+            inputs = inputs.to(device)
+            outputs = model(inputs)
+            _, preds = torch.max(outputs, 1)  # Get the predictions
+            all_preds.extend(preds.cpu().numpy())
+            all_labels.extend(labels.numpy())
+    accuracy = accuracy_score(all_labels, all_preds)
+    model.train()  # Set the model back to training mode
     return accuracy
 
 def nt_xent_loss(z_i, z_j, temperature=0.5):
@@ -211,7 +209,7 @@ if __name__ == '__main__':
         train_loader = DataLoader(dataset, batch_size=2, shuffle=True)
 
         val_dataset = ValDataset(val_folder, label_folder, transform=train_transforms)
-        val_loader = DataLoader(val_dataset, batch_size=2, shuffle=True)
+        val_loader = DataLoader(val_dataset, batch_size=2, shuffle=False)
 
         for epoch in range(args.epochs):
             for batch_idx, (view1, view2) in enumerate(train_loader):
