@@ -162,12 +162,19 @@ def validate(model, val_loader, device):
     print("Here \n")
     with torch.no_grad():  # Disable gradient computation
         for inputs, labels in val_loader:
-            print(inputs)
+            if inputs.nelement() == 0 or labels.nelement() == 0:
+                print("Encountered an empty inputs or labels.")
+                continue  
+            print(inputs, labels)
             inputs = inputs.to(device)
             outputs = model(inputs)
             _, preds = torch.max(outputs, 1)  # Get the predictions
+            print(f"Inputs size: {inputs.size()}, Outputs size: {outputs.size()}, Preds: {preds}, Labels: {labels}")
             all_preds.extend(preds.cpu().numpy())
             all_labels.extend(labels.numpy())
+    if not all_preds or not all_labels:  # Check if lists are empty
+        print("No predictions or labels were collected.")
+        return float('nan')
     accuracy = accuracy_score(all_labels, all_preds)
     model.train()  # Set the model back to training mode
     return accuracy
