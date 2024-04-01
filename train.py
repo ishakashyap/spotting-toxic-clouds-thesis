@@ -193,13 +193,13 @@ if __name__ == '__main__':
         ])
 
         train_folder = "./train"
-        val_folder = "./val_labeled"
+        val_folder = "./val_labeled_test"
         label_folder = "./metadata_02242020.json"
         dataset = SimCLRDataset(train_folder, transform=train_transforms)
-        train_loader = DataLoader(dataset, batch_size=20, shuffle=True)
+        train_loader = DataLoader(dataset, batch_size=2, shuffle=True)
 
         val_dataset = ValDataset(val_folder, label_folder, transform=train_transforms)
-        val_loader = DataLoader(val_dataset, batch_size=20, shuffle=True)
+        val_loader = DataLoader(val_dataset, batch_size=2, shuffle=True)
 
         for epoch in range(args.epochs):
             for batch_idx, (view1, view2) in enumerate(train_loader):
