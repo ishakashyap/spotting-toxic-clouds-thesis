@@ -54,13 +54,29 @@ class ValDataset(Dataset):
         
         # Load labels from JSON file
         self.labels = self._load_labels(labels_json_path)
+        self.video_files = self.validate_videos_and_labels()
 
     def _load_labels(self, labels_json_path):
         with open(labels_json_path, 'r') as f:
             labels_json = json.load(f)
-        # Assuming the JSON structure is a list of dicts with 'file_name' and 'label' keys
-        labels = {item['file_name']: item['label_state_admin'] for item in labels_json}
+        labels = {item['file_name']: item['label'] 
+                  for item in labels_json 
+                  if item['label'] is not None}
         return labels
+    
+    def validate_videos_and_labels(self):
+        # Keep only videos for which we have a non-None label and can be loaded
+        valid_videos = []
+        for video_file in os.listdir(self.folder_path):
+            if video_file in self.labels:  # Checks if video has a non-None label
+                video_path = os.path.join(self.folder_path, video_file)
+                try:
+                    video, _, _ = read_video(video_path, pts_unit='sec')
+                    if video.nelement() > 0:  # Checks if video is loaded properly
+                        valid_videos.append(video_file)
+                except Exception as e:
+                    print(f"Error loading video {video_file}: {e}")
+        return valid_videos
 
     def __len__(self):
         return len(self.video_files)
@@ -79,7 +95,7 @@ class ValDataset(Dataset):
     
         video = video.permute(0, 3, 1, 2)  # Convert to (T, C, H, W)
         
-        # Apply transformation to get a single view of the video
+        # Apply transformation to get a single view of the videos
         view = self.transform_video(video)
         
         # Get the label for the current video, default to None if not found
