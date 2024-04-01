@@ -59,9 +59,10 @@ class ValDataset(Dataset):
     def _load_labels(self, labels_json_path):
         with open(labels_json_path, 'r') as f:
             labels_json = json.load(f)
-        labels = {item['file_name']: item['label_state_admin'] 
-                  for item in labels_json 
-                  if item['label_state_admin'] is not None}
+        # Append the .mp4 extension to the filenames
+        labels = {item['file_name'] + '.mp4': item['label_state_admin'] 
+                    for item in labels_json 
+                    if item['label_state_admin'] is not None}
         return labels
     
     def validate_videos_and_labels(self):
