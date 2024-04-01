@@ -126,22 +126,26 @@ class SimCLRDataset(Dataset):
             video_tensor = torch.stack(transformed_frames)
         except Exception as e:
             print(f"Error transforming video: {e}")
-            
+
         return video_tensor.permute(1, 0, 2, 3)  # Reshape to (C, T, H, W) for model
 
 def validate(model, val_loader, device):
-    model.eval()  # Set the model to evaluation mode
-    all_preds = []
-    all_labels = []
-    with torch.no_grad():  # Disable gradient computation
-        for inputs, labels in val_loader:
-            inputs = inputs.to(device)
-            outputs = model(inputs)
-            _, preds = torch.max(outputs, 1)  # Get the predictions
-            all_preds.extend(preds.cpu().numpy())
-            all_labels.extend(labels.numpy())
-    accuracy = accuracy_score(all_labels, all_preds)
-    model.train()  # Set the model back to training mode
+    try:
+        model.eval()  # Set the model to evaluation mode
+        all_preds = []
+        all_labels = []
+        with torch.no_grad():  # Disable gradient computation
+            for inputs, labels in val_loader:
+                print(labels)
+                inputs = inputs.to(device)
+                outputs = model(inputs)
+                _, preds = torch.max(outputs, 1)  # Get the predictions
+                all_preds.extend(preds.cpu().numpy())
+                all_labels.extend(labels.numpy())
+        accuracy = accuracy_score(all_labels, all_preds)
+        model.train()  # Set the model back to training mode
+    except Exception as e:
+        print(f"Error getting validation data: {e}")
     return accuracy
 
 def nt_xent_loss(z_i, z_j, temperature=0.5):
