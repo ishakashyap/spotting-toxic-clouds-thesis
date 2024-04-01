@@ -84,6 +84,10 @@ class ValDataset(Dataset):
         
         # Get the label for the current video, default to None if not found
         label = self.labels.get(video_file, None)
+
+        if label is None:
+            print(f"Failed to load label: {video_path}")
+            return None, None
         
         return view, label
 
