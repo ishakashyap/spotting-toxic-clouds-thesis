@@ -101,24 +101,32 @@ class SimCLRDataset(Dataset):
         return len(self.video_files)
 
     def __getitem__(self, idx):
-        video_file = self.video_files[idx]
-        video_path = os.path.join(self.folder_path, video_file)
-        video, _, _ = read_video(video_path, pts_unit='sec')
-        video = video.permute(0, 3, 1, 2)  # Convert to (T, C, H, W)
-        
-        # Apply transformations to get two views of the same video
-        view1 = self.transform_video(video)
-        view2 = self.transform_video(video)
+        try:
+            video_file = self.video_files[idx]
+            video_path = os.path.join(self.folder_path, video_file)
+            video, _, _ = read_video(video_path, pts_unit='sec')
+            video = video.permute(0, 3, 1, 2)  # Convert to (T, C, H, W)
+            
+            # Apply transformations to get two views of the same video
+            view1 = self.transform_video(video)
+            view2 = self.transform_video(video)
+        except Exception as e:
+            print(f"Error loading video {video_path}: {e}")
+
         return view1, view2
 
     def transform_video(self, video):
-        transformed_frames = []
-        for frame in video:
-            frame = F.to_pil_image(frame)
-            if self.transform:
-                frame = self.transform(frame)
-            transformed_frames.append(frame)
-        video_tensor = torch.stack(transformed_frames)
+        try:
+            transformed_frames = []
+            for frame in video:
+                frame = F.to_pil_image(frame)
+                if self.transform:
+                    frame = self.transform(frame)
+                transformed_frames.append(frame)
+            video_tensor = torch.stack(transformed_frames)
+        except Exception as e:
+            print(f"Error transforming video: {e}")
+            
         return video_tensor.permute(1, 0, 2, 3)  # Reshape to (C, T, H, W) for model
 
 def validate(model, val_loader, device):
