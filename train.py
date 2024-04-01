@@ -71,6 +71,12 @@ class ValDataset(Dataset):
         
         # Load the video
         video, _, _ = read_video(video_path, pts_unit='sec')
+
+        if video.nelement() == 0:  # or any other condition indicating failure
+            # Handle error: log, raise an exception, or return a default value
+            print(f"Failed to load video: {video_path}")
+            return None, None
+    
         video = video.permute(0, 3, 1, 2)  # Convert to (T, C, H, W)
         
         # Apply transformation to get a single view of the video
