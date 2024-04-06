@@ -58,9 +58,9 @@ class SimCLRVideo(pl.LightningModule):
         lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.hparams.max_epochs, eta_min=self.hparams.lr / 50)
         return [optimizer], [lr_scheduler]
 
-    def configure_callbacks(self):
-        checkpoint = ModelCheckpoint(monitor="val_loss")
-        return [checkpoint]
+    # def configure_callbacks(self):
+    #     checkpoint = ModelCheckpoint(monitor="train_loss")
+    #     return [checkpoint]
 
     def forward(self, x):
         # Forward pass through the base model and projection head
@@ -337,7 +337,7 @@ if __name__ == '__main__':
             # devices=1 if torch.cuda.is_available() else None,  # Adjust as per your setup
             max_epochs=50,
             callbacks=[
-                ModelCheckpoint(save_weights_only=True, mode='max', monitor='val_acc_top5'),
+                ModelCheckpoint(save_weights_only=True, mode='max', monitor='train_loss'),
                 LearningRateMonitor('epoch')])
         else:
 
@@ -349,7 +349,7 @@ if __name__ == '__main__':
             # devices=1 if torch.cuda.is_available() else None,  # Adjust as per your setup
             max_epochs=50,
             callbacks=[
-                ModelCheckpoint(save_weights_only=True, mode='max', monitor='val_acc_top5'),
+                ModelCheckpoint(save_weights_only=True, mode='max', monitor='train_loss'),
                 LearningRateMonitor('epoch')])
         
         trainer.fit(model, train_loader)
