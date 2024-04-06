@@ -59,7 +59,7 @@ class SimCLRVideo(pl.LightningModule):
         return [optimizer], [lr_scheduler]
 
     def configure_callbacks(self):
-        checkpoint = ModelCheckpoint(monitor="val_acc_top5")
+        checkpoint = ModelCheckpoint(monitor="val_loss")
         return [checkpoint]
 
     def forward(self, x):
