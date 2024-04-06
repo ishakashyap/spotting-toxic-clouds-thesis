@@ -338,7 +338,7 @@ if __name__ == '__main__':
             max_epochs=50,
             callbacks=[
                 ModelCheckpoint(save_weights_only=True, mode='max', monitor='train_loss'),
-                LearningRateMonitor('epoch')])
+                LearningRateMonitor('epoch')], log_every_n_steps=2)
         else:
 
         # Update to the correct class name and pass necessary initialization arguments
@@ -350,7 +350,7 @@ if __name__ == '__main__':
             max_epochs=50,
             callbacks=[
                 ModelCheckpoint(save_weights_only=True, mode='max', monitor='train_loss'),
-                LearningRateMonitor('epoch')])
+                LearningRateMonitor('epoch')], log_every_n_steps=2)
         
         trainer.fit(model, train_loader)
         trainer.save_checkpoint('SimCLR.ckpt')
