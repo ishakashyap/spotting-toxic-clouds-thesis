@@ -40,7 +40,9 @@ class SimCLRVideo(pl.LightningModule):
         assert self.hparams.temperature > 0.0, 'The temperature must be a positive float!'
 
         # Use a 3D CNN model as base model for video data
-        self.model = r3d_18(pretrained=True)  # Pretrained 3D ResNet
+        weights = R3D_18_Weights.DEFAULT
+        self.model = r3d_18(weights=weights)
+        # self.model = r3d_18(pretrained=True)  # Pretrained 3D ResNet
         self.model.fc = nn.Identity()  # Remove the final fully connected layer
 
         # The MLP head for projection
@@ -55,6 +57,10 @@ class SimCLRVideo(pl.LightningModule):
         optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
         lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.hparams.max_epochs, eta_min=self.hparams.lr / 50)
         return [optimizer], [lr_scheduler]
+
+    def configure_callbacks(self):
+        checkpoint = ModelCheckpoint(monitor="val_acc_top5")
+        return [checkpoint]
 
     def forward(self, x):
         # Forward pass through the base model and projection head
@@ -286,6 +292,7 @@ if __name__ == '__main__':
     print(f"Using device: {device}")
     CHECKPOINT_PATH = "./checkpoints"
     os.makedirs(CHECKPOINT_PATH, exist_ok=True)
+    torch.set_float32_matmul_precision('medium')
 
     # if args.model == 'r3d':
     #     # weights = R3D_18_Weights.DEFAULT
@@ -311,7 +318,7 @@ if __name__ == '__main__':
         # val_folder = "./val_labeled_test"
         label_folder = "./metadata_02242020.json"
         dataset = SimCLRDataset(train_folder, transform=train_transforms)
-        train_loader = DataLoader(dataset, batch_size=2, shuffle=True, num_workers=7, persistent_workers=True)
+        train_loader = DataLoader(dataset, batch_size=20, shuffle=True, num_workers=7, persistent_workers=True)
 
         # val_dataset = ValDataset(val_folder, label_folder, transform=train_transforms)
         # val_loader = DataLoader(val_dataset, batch_size=2, shuffle=False, num_workers=7)
