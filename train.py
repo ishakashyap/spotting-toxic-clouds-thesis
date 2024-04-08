@@ -32,6 +32,7 @@ class ProjectionHead(nn.Module):
     def forward(self, x):
         return self.layers(x)
 
+
 class SimCLRVideo(pl.LightningModule):
 
     def __init__(self, hidden_dim, lr, temperature, weight_decay, max_epochs=500):
@@ -82,7 +83,7 @@ class SimCLRVideo(pl.LightningModule):
         nll = nll.mean()
 
         # Logging
-        self.log(f'{mode}_loss', nll)
+        self.log(f'{mode}_loss', nll, on_step=True, on_epoch=True, prog_bar=True, logger=True)
 
         return nll
 
@@ -330,30 +331,30 @@ if __name__ == '__main__':
             print(f'Found pretrained model at {pretrained_filename}, loading...')
             # Update to the correct class name and possibly adjust for any required initialization arguments
             model = SimCLRVideo.load_from_checkpoint(pretrained_filename)
-            optimizer = optim.Adam(model.parameters(), lr=1e-2)
+            # optimizer = optim.Adam(model.parameters(), lr=1e-2)
 
             trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, 'SimCLR.ckpt'),
             accelerator="gpu" if torch.cuda.is_available() else "cpu",
             # devices=1 if torch.cuda.is_available() else None,  # Adjust as per your setup
             max_epochs=50,
             callbacks=[
-                ModelCheckpoint(save_weights_only=True, mode='max', monitor='train_loss'),
+                ModelCheckpoint(save_weights_only=True, mode='min', monitor='train_loss'),
                 LearningRateMonitor('epoch')], log_every_n_steps=2)
         else:
 
         # Update to the correct class name and pass necessary initialization arguments
             model = SimCLRVideo(hidden_dim=224, lr=1e-3, temperature=0.07, weight_decay=1e-4, max_epochs=50)
-            optimizer = optim.Adam(model.parameters(), lr=1e-2)
+            # optimizer = optim.Adam(model.parameters(), lr=1e-2)
             trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, 'SimCLR.ckpt'),
             accelerator="gpu" if torch.cuda.is_available() else "cpu",
             # devices=1 if torch.cuda.is_available() else None,  # Adjust as per your setup
             max_epochs=50,
             callbacks=[
-                ModelCheckpoint(save_weights_only=True, mode='max', monitor='train_loss'),
+                ModelCheckpoint(save_weights_only=True, mode='min', monitor='train_loss'),
                 LearningRateMonitor('epoch')], log_every_n_steps=2)
         
         trainer.fit(model, train_loader)
-        trainer.save_checkpoint('SimCLR.ckpt')
+        trainer.save_checkpoint(os.path.join(CHECKPOINT_PATH, 'SimCLR.ckpt'))
         # Update the checkpoint loading logic if needed
         # model = SimCLRVideo.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
@@ -378,6 +379,5 @@ if __name__ == '__main__':
         # torch.save(model.state_dict(), './model_state_dict.pth')
         print('Training complete')
 
-    # TypeError: cat() received an invalid combination of arguments - got (Tensor, dim=int), but expected one of:
-#  * (tuple of Tensors tensors, int dim, *, Tensor out)
-#  * (tuple of Tensors tensors, name dim, *, Tensor out)
+    # TODO: Figure out checkpoint, train on bigger batch of data, figure out why larger batch size doesn't work, hyperparameter tuning
+    # TODO: Add finetuning
