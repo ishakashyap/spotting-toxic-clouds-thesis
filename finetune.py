@@ -58,11 +58,17 @@ class SimCLR_eval(pl.LightningModule):
        print(y.min(), y.max())
        z = self.forward(x)
        loss = self.loss(z, y)
-       self.log('Cross Entropy loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+       self.log('Cross Entropy loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
 
        predicted = z.argmax(1)
        acc = (predicted == y).sum().item() / y.size(0)
        self.log('Train Acc', acc, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+       log_dir = 'logs'
+       log_file = 'training_logs.txt'
+       log_path = os.path.join(log_dir, log_file)
+       
+       with open(log_path, 'a') as f:
+            f.write(f"Batch {batch_idx}: Loss: {loss.item()}, Acc: {acc*100:.2f}%, Labels: {y.tolist()}\n")
 
        return loss
 
