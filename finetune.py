@@ -213,7 +213,7 @@ if __name__ == '__main__':
 
     trainer = pl.Trainer(
         max_epochs=50,
-        gpus=1 if torch.cuda.is_available() else 0,
+        accelerator="gpu" if torch.cuda.is_available() else "cpu",
         callbacks=[ModelCheckpoint(dirpath='./checkpoints/', monitor='Train Acc', mode='max')],
     )
 
