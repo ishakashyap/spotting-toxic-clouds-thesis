@@ -19,6 +19,7 @@ from PIL import Image
 from sklearn.metrics import accuracy_score
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
+from train import SimCLRVideo
 
 class SimCLR_eval(pl.LightningModule):
     def __init__(self, lr, model=None, linear_eval=False, fine_tune=False):
@@ -205,8 +206,9 @@ if __name__ == '__main__':
     pretrained_filename = os.path.join(CHECKPOINT_PATH, 'SimCLR.ckpt/lightning_logs/version_6/checkpoints/epoch=0-step=13.ckpt')
     print(f'Found pretrained model at {pretrained_filename}, loading...')
     # Update to the correct class name and possibly adjust for any required initialization arguments
-    model = SimCLR_eval.load_from_checkpoint(pretrained_filename)
-    fine_tuning_model = SimCLR_eval(lr=1e-3, model=model, fine_tune=True)
+    sim_model = SimCLRVideo.load_from_checkpoint(pretrained_filename)
+    backbone_model = sim_model.model
+    fine_tuning_model = SimCLR_eval(lr=1e-3, model=backbone_model, fine_tune=True, linear_eval=False)
     # optimizer = optim.Adam(model.parameters(), lr=1e-2)
 
     trainer = pl.Trainer(
