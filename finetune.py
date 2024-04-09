@@ -35,7 +35,7 @@ class SimCLR_eval(pl.LightningModule):
             model.eval()  # Only in linear_eval mode, we keep the base model in eval mode
 
         self.mlp = nn.Sequential(
-            nn.Linear(512, 10),  # Adjust the in_features to match your model's output
+            nn.Linear(512, 2),  # Adjust the in_features to match your model's output
         )
 
         # Incorporate the base model with the newly added MLP for classification
@@ -49,6 +49,7 @@ class SimCLR_eval(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
        x, y = batch
+       print(y.min(), y.max())
        z = self.forward(x)
        loss = self.loss(z, y)
        self.log('Cross Entropy loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
