@@ -21,6 +21,11 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from train import SimCLRVideo
 
+def adjust_labels(y):
+    # Map label 16 to 0 and label 23 to 1
+    y_adjusted = torch.where(y == 16, torch.zeros_like(y), torch.ones_like(y))
+    return y_adjusted
+
 class SimCLR_eval(pl.LightningModule):
     def __init__(self, lr, model=None, linear_eval=False, fine_tune=False):
         super().__init__()
@@ -35,7 +40,7 @@ class SimCLR_eval(pl.LightningModule):
             model.eval()  # Only in linear_eval mode, we keep the base model in eval mode
 
         self.mlp = nn.Sequential(
-            nn.Linear(512, 2),  # Adjust the in_features to match your model's output
+            nn.Linear(512, 2),
         )
 
         # Incorporate the base model with the newly added MLP for classification
@@ -49,6 +54,7 @@ class SimCLR_eval(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
        x, y = batch
+       y = adjust_labels(y)
        print(y.min(), y.max())
        z = self.forward(x)
        loss = self.loss(z, y)
@@ -62,6 +68,7 @@ class SimCLR_eval(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
        x, y = batch
+       y = adjust_labels(y)
        z = self.forward(x)
        loss = self.loss(z, y)
        self.log('Val CE loss', loss, on_step=True, on_epoch=True, prog_bar=False, logger=True)
