@@ -66,6 +66,7 @@ class SimCLR_eval(pl.LightningModule):
        log_dir = 'logs'
        log_file = 'training_logs.txt'
        log_path = os.path.join(log_dir, log_file)
+       os.makedirs('logs', exist_ok=True)
        
        with open(log_path, 'a') as f:
             f.write(f"Batch {batch_idx}: Loss: {loss.item()}, Acc: {acc*100:.2f}%, Labels: {y.tolist()}\n")
