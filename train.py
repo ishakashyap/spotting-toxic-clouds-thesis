@@ -343,12 +343,12 @@ if __name__ == '__main__':
         else:
 
         # Update to the correct class name and pass necessary initialization arguments
-            model = SimCLRVideo(hidden_dim=224, lr=1e-3, temperature=0.07, weight_decay=1e-4, max_epochs=100)
+            model = SimCLRVideo(hidden_dim=224, lr=1e-3, temperature=0.07, weight_decay=1e-4, max_epochs=50)
             # optimizer = optim.Adam(model.parameters(), lr=1e-2)
             trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, 'SimCLR.ckpt'),
             accelerator="gpu" if torch.cuda.is_available() else "cpu",
             # devices=1 if torch.cuda.is_available() else None,  # Adjust as per your setup
-            max_epochs=10,
+            max_epochs=100,
             callbacks=[
                 ModelCheckpoint(save_weights_only=True, mode='min', monitor='train_loss'),
                 LearningRateMonitor('epoch')], log_every_n_steps=2)
