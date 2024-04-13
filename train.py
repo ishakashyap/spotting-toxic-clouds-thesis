@@ -319,7 +319,7 @@ if __name__ == '__main__':
         # val_folder = "./val_labeled_test"
         label_folder = "./metadata_02242020.json"
         dataset = SimCLRDataset(train_folder, transform=train_transforms)
-        train_loader = DataLoader(dataset, batch_size=2, shuffle=True, num_workers=7, persistent_workers=True)
+        train_loader = DataLoader(dataset, batch_size=6, shuffle=True, num_workers=7, persistent_workers=True)
 
         # val_dataset = ValDataset(val_folder, label_folder, transform=train_transforms)
         # val_loader = DataLoader(val_dataset, batch_size=2, shuffle=False, num_workers=7)
@@ -343,12 +343,12 @@ if __name__ == '__main__':
         else:
 
         # Update to the correct class name and pass necessary initialization arguments
-            model = SimCLRVideo(hidden_dim=224, lr=1e-3, temperature=0.07, weight_decay=1e-4, max_epochs=50)
+            model = SimCLRVideo(hidden_dim=224, lr=1e-3, temperature=0.07, weight_decay=1e-4, max_epochs=10)
             # optimizer = optim.Adam(model.parameters(), lr=1e-2)
             trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, 'SimCLR.ckpt'),
             accelerator="gpu" if torch.cuda.is_available() else "cpu",
             # devices=1 if torch.cuda.is_available() else None,  # Adjust as per your setup
-            max_epochs=50,
+            max_epochs=10,
             callbacks=[
                 ModelCheckpoint(save_weights_only=True, mode='min', monitor='train_loss'),
                 LearningRateMonitor('epoch')], log_every_n_steps=2)
