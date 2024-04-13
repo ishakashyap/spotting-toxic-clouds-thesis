@@ -354,7 +354,7 @@ if __name__ == '__main__':
                 LearningRateMonitor('epoch')], log_every_n_steps=2)
         
         trainer.fit(model, train_loader)
-        trainer.save_checkpoint(os.path.join(CHECKPOINT_PATH, 'SimCLR.ckpt/lightning_logs/version_7/checkpoints/'))
+        trainer.save_checkpoint(os.path.join(CHECKPOINT_PATH, 'SimCLR.ckpt/lightning_logs/version_7/checkpoints/SimCLR_v7.ckpt'))
         # Update the checkpoint loading logic if needed
         # model = SimCLRVideo.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
