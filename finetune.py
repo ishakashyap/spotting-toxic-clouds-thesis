@@ -48,8 +48,8 @@ class SimCLR_eval(pl.LightningModule):
         self.model = model
         self.classifier = self.mlp
         self.loss = nn.CrossEntropyLoss()
-        self.accuracy = torchmetrics.Accuracy(top_k=1)
-        self.top5_accuracy = torchmetrics.Accuracy(top_k=5)
+        self.accuracy = torchmetrics.Accuracy(top_k=1, task='binary')
+        self.top5_accuracy = torchmetrics.Accuracy(top_k=5, task='binary')
         self.epoch_accuracies = []
 
     def forward(self, X):
