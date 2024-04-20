@@ -81,7 +81,7 @@ class SimCLR_eval(pl.LightningModule):
 
        return loss
     
-    def training_epoch_end(self, outputs):
+    def on_train_epoch_end(self, outputs):
         avg_acc = self.accuracy.compute()
         avg_top5_acc = self.top5_accuracy.compute()
         self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
