@@ -7,6 +7,7 @@ import json
 import numpy as np
 import pandas as pd
 import torch
+import torchmetrics
 import torch.nn as nn
 from torch.utils.data import DataLoader, random_split, Dataset
 from torchvision import transforms
@@ -47,6 +48,9 @@ class SimCLR_eval(pl.LightningModule):
         self.model = model
         self.classifier = self.mlp
         self.loss = nn.CrossEntropyLoss()
+        self.accuracy = torchmetrics.Accuracy(top_k=1)
+        self.top5_accuracy = torchmetrics.Accuracy(top_k=5)
+        self.epoch_accuracies = []
 
     def forward(self, X):
         features = self.model(X)  # Get features from the base model
@@ -55,23 +59,40 @@ class SimCLR_eval(pl.LightningModule):
     def training_step(self, batch, batch_idx):
        x, y = batch
        y = adjust_labels(y)
-       print(y.min(), y.max())
-       z = self.forward(x)
-       loss = self.loss(z, y)
-       self.log('Cross Entropy loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
+       logits = self(x)
+       loss = self.loss(logits, y)
+       acc = self.accuracy(logits, y)
+       top5_acc = self.top5_accuracy(logits, y)
+       self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True)
+       self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True)
+       self.log('train_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True)
+    #    self.log('Cross Entropy loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
 
-       predicted = z.argmax(1)
-       acc = (predicted == y).sum().item() / y.size(0)
-       self.log('Train Acc', acc, on_step=False, on_epoch=True, prog_bar=True, logger=True)
-       log_dir = 'logs'
-       log_file = 'training_logs.txt'
-       log_path = os.path.join(log_dir, log_file)
-       os.makedirs('logs', exist_ok=True)
+    #    predicted = z.argmax(1)
+    #    acc = (predicted == y).sum().item() / y.size(0)
+    #    self.log('Train Acc', acc, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+    #    log_dir = 'logs'
+    #    log_file = 'training_logs.txt'
+    #    log_path = os.path.join(log_dir, log_file)
+    #    os.makedirs('logs', exist_ok=True)
        
-       with open(log_path, 'a') as f:
-            f.write(f"Batch {batch_idx}: Loss: {loss.item()}, Acc: {acc*100:.2f}%, Labels: {y.tolist()}\n")
+    #    with open(log_path, 'a') as f:
+    #         f.write(f"Batch {batch_idx}: Loss: {loss.item()}, Acc: {acc*100:.2f}%, Labels: {y.tolist()}\n")
 
        return loss
+    
+    def training_epoch_end(self, outputs):
+        avg_acc = self.accuracy.compute()
+        avg_top5_acc = self.top5_accuracy.compute()
+        self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
+        self.log('avg_train_acc', avg_acc)
+        self.log('avg_train_top5_acc', avg_top5_acc)
+        self.accuracy.reset()
+        self.top5_accuracy.reset()
+    
+    def on_train_end(self):
+        overall_avg_accuracy = np.mean(self.epoch_accuracies)
+        print(f'Overall Average Top-1 Accuracy across all epochs: {overall_avg_accuracy}')
 
     def validation_step(self, batch, batch_idx):
        x, y = batch
@@ -88,15 +109,15 @@ class SimCLR_eval(pl.LightningModule):
 
     def configure_optimizers(self):
     # Different learning rate for fine-tuning pre-trained layers
-        base_lr = self.lr / 10
-        classifier_lr = self.lr
+        # base_lr = self.lr / 10
+        # classifier_lr = self.lr
 
-        optimizer = optim.SGD([
-            {'params': self.model.parameters(), 'lr': base_lr},
-            {'params': self.classifier.parameters(), 'lr': classifier_lr},
-        ], lr=self.lr, momentum=0.9)
+        # optimizer = optim.SGD([
+        #     {'params': self.model.parameters(), 'lr': base_lr},
+        #     {'params': self.classifier.parameters(), 'lr': classifier_lr},
+        # ], lr=self.lr, momentum=0.9)
 
-        return optimizer
+        return torch.optim.Adam(self.parameters(), lr=self.lr)
 
 class ValDataset(Dataset):
     def __init__(self, folder_path, labels_json_path, transform=None):
@@ -198,6 +219,7 @@ if __name__ == '__main__':
     os.makedirs(CHECKPOINT_PATH, exist_ok=True)
     torch.set_float32_matmul_precision('medium')
 
+    # TODO: Remove transformations
     train_transforms = Compose([
         Resize(224), 
         RandomApply([GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.5),
@@ -214,7 +236,7 @@ if __name__ == '__main__':
     label_folder = "./metadata_02242020.json"
 
     val_dataset = ValDataset(val_folder, label_folder, transform=train_transforms)
-    val_loader = DataLoader(val_dataset, batch_size=2, shuffle=False, num_workers=7)
+    val_loader = DataLoader(val_dataset, batch_size=50, shuffle=False, num_workers=7)
 
     pl.seed_everything(42)  # For reproducibility
 
