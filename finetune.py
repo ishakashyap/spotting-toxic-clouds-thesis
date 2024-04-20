@@ -236,7 +236,7 @@ if __name__ == '__main__':
     label_folder = "./metadata_02242020.json"
 
     val_dataset = ValDataset(val_folder, label_folder, transform=train_transforms)
-    val_loader = DataLoader(val_dataset, batch_size=50, shuffle=False, num_workers=7)
+    val_loader = DataLoader(val_dataset, batch_size=10, shuffle=False, num_workers=0)
 
     pl.seed_everything(42)  # For reproducibility
 
@@ -251,7 +251,7 @@ if __name__ == '__main__':
     trainer = pl.Trainer(
         max_epochs=50,
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
-        callbacks=[ModelCheckpoint(dirpath='./checkpoints/', monitor='Train Acc', mode='max')],
+        callbacks=[ModelCheckpoint(dirpath='./checkpoints/', monitor='Train Acc', mode='max')], log_every_n_steps=2
     )
 
     # Start the training and validation process
