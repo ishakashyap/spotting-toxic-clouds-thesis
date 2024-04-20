@@ -61,8 +61,10 @@ class SimCLR_eval(pl.LightningModule):
        y = adjust_labels(y)
        logits = self(x)
        loss = self.loss(logits, y)
-       acc = self.accuracy(logits, y)
-       top5_acc = self.top5_accuracy(logits, y)
+       _, preds = torch.max(logits, dim=1)
+       acc = self.accuracy(preds, y)
+       top5_acc = self.top5_accuracy(preds, y)
+
        self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True)
        self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True)
        self.log('train_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True)
