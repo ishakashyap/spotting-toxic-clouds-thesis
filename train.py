@@ -35,7 +35,7 @@ class ProjectionHead(nn.Module):
 
 class SimCLRVideo(pl.LightningModule):
 
-    def __init__(self, hidden_dim, lr, temperature, weight_decay, max_epochs=500):
+    def __init__(self, hidden_dim, lr, temperature, weight_decay, max_epochs=1000):
         super().__init__()
         self.save_hyperparameters()
         assert self.hparams.temperature > 0.0, 'The temperature must be a positive float!'
@@ -315,46 +315,46 @@ if __name__ == '__main__':
             Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
         
-        train_folder = "./train"
+        train_folder = "./train_full"
         # val_folder = "./val_labeled_test"
         label_folder = "./metadata_02242020.json"
         dataset = SimCLRDataset(train_folder, transform=train_transforms)
-        train_loader = DataLoader(dataset, batch_size=6, shuffle=True, num_workers=7, persistent_workers=True)
+        train_loader = DataLoader(dataset, batch_size=20, shuffle=True, num_workers=0, persistent_workers=True)
 
         # val_dataset = ValDataset(val_folder, label_folder, transform=train_transforms)
         # val_loader = DataLoader(val_dataset, batch_size=2, shuffle=False, num_workers=7)
 
         pl.seed_everything(42)  # For reproducibility
 
-        pretrained_filename = os.path.join(CHECKPOINT_PATH, 'SimCLR.ckpt')
-        if os.path.isfile(pretrained_filename):
-            print(f'Found pretrained model at {pretrained_filename}, loading...')
-            # Update to the correct class name and possibly adjust for any required initialization arguments
-            model = SimCLRVideo.load_from_checkpoint(pretrained_filename)
-            # optimizer = optim.Adam(model.parameters(), lr=1e-2)
+        # pretrained_filename = os.path.join(CHECKPOINT_PATH, 'SimCLR.ckpt')
+        # if os.path.isfile(pretrained_filename):
+        #     print(f'Found pretrained model at {pretrained_filename}, loading...')
+        #     # Update to the correct class name and possibly adjust for any required initialization arguments
+        #     model = SimCLRVideo.load_from_checkpoint(pretrained_filename)
+        #     # optimizer = optim.Adam(model.parameters(), lr=1e-2)
 
-            trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, 'SimCLR.ckpt'),
-            accelerator="gpu" if torch.cuda.is_available() else "cpu",
-            # devices=1 if torch.cuda.is_available() else None,  # Adjust as per your setup
-            max_epochs=50,
-            callbacks=[
-                ModelCheckpoint(save_weights_only=True, mode='min', monitor='train_loss'),
-                LearningRateMonitor('epoch')], log_every_n_steps=2)
-        else:
+        #     trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, 'SimCLR.ckpt'),
+        #     accelerator="gpu" if torch.cuda.is_available() else "cpu",
+        #     # devices=1 if torch.cuda.is_available() else None,  # Adjust as per your setup
+        #     max_epochs=50,
+        #     callbacks=[
+        #         ModelCheckpoint(save_weights_only=True, mode='min', monitor='train_loss'),
+        #         LearningRateMonitor('epoch')], log_every_n_steps=2)
+        # else:
 
         # Update to the correct class name and pass necessary initialization arguments
-            model = SimCLRVideo(hidden_dim=224, lr=1e-3, temperature=0.07, weight_decay=1e-4, max_epochs=50)
-            # optimizer = optim.Adam(model.parameters(), lr=1e-2)
-            trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, 'SimCLR.ckpt'),
-            accelerator="gpu" if torch.cuda.is_available() else "cpu",
-            # devices=1 if torch.cuda.is_available() else None,  # Adjust as per your setup
-            max_epochs=100,
-            callbacks=[
-                ModelCheckpoint(save_weights_only=True, mode='min', monitor='train_loss'),
-                LearningRateMonitor('epoch')], log_every_n_steps=2)
+        model = SimCLRVideo(hidden_dim=224, lr=1e-3, temperature=0.07, weight_decay=1e-4, max_epochs=1000)
+        # optimizer = optim.Adam(model.parameters(), lr=1e-2)
+        trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, 'Full_SimCLR_test.ckpt'),
+        accelerator="gpu" if torch.cuda.is_available() else "cpu",
+        # devices=1 if torch.cuda.is_available() else None,  # Adjust as per your setup
+        max_epochs=1000,
+        callbacks=[
+            ModelCheckpoint(save_weights_only=True, mode='min', monitor='train_loss'),
+            LearningRateMonitor('epoch')], log_every_n_steps=2)
         
         trainer.fit(model, train_loader)
-        trainer.save_checkpoint(os.path.join(CHECKPOINT_PATH, 'SimCLR.ckpt/lightning_logs/version_7/checkpoints/SimCLR_v7.ckpt'))
+        trainer.save_checkpoint(os.path.join(CHECKPOINT_PATH, 'Full_SimCLR_test.ckpt'))
         # Update the checkpoint loading logic if needed
         # model = SimCLRVideo.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
