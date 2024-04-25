@@ -263,7 +263,7 @@ if __name__ == '__main__':
 
     pl.seed_everything(42)  # For reproducibility
 
-    pretrained_filename = '/checkpoints/Full_SimCLR_test.ckpt/lightning_logs/version_1/checkpoints/epoch=18-step=5700.ckpt' #os.path.join(CHECKPOINT_PATH, 'Full_SimCLR_test.ckpt')
+    pretrained_filename = './checkpoints/Full_SimCLR_test.ckpt/lightning_logs/version_1/checkpoints/epoch=18-step=5700.ckpt' #os.path.join(CHECKPOINT_PATH, 'Full_SimCLR_test.ckpt')
     print(f'Found pretrained model at {pretrained_filename}, loading...')
     # Update to the correct class name and possibly adjust for any required initialization arguments
     sim_model = SimCLRVideo.load_from_checkpoint(pretrained_filename)
