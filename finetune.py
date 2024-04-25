@@ -81,14 +81,14 @@ class SimCLR_eval(pl.LightningModule):
     #    with open(log_path, 'a') as f:
     #         f.write(f"Batch {batch_idx}: Loss: {loss.item()}, Acc: {acc*100:.2f}%, Labels: {y.tolist()}\n")
 
-       return loss
+       return {'loss': loss, 'train_acc': acc, 'train_top5_acc': top5_acc}
     
     def on_train_epoch_end(self):
         avg_acc = self.accuracy.compute()
         avg_top5_acc = self.top5_accuracy.compute()
         self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
-        self.log('avg_train_acc', avg_acc)
-        self.log('avg_train_top5_acc', avg_top5_acc)
+        self.log('avg_train_acc', avg_acc, sync_dist=True)
+        self.log('avg_train_top5_acc', avg_top5_acc, sync_dist=True)
         self.accuracy.reset()
         self.top5_accuracy.reset()
     
@@ -99,15 +99,30 @@ class SimCLR_eval(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
        x, y = batch
        y = adjust_labels(y)
-       z = self.forward(x)
-       loss = self.loss(z, y)
-       self.log('Val CE loss', loss, on_step=True, on_epoch=True, prog_bar=False, logger=True)
+       logits = self(x)
+       loss = self.loss(logits, y)
+       _, preds = torch.max(logits, dim=1)
+       acc = self.accuracy(preds, y)
+       top5_acc = self.top5_accuracy(preds, y)
 
-       predicted = z.argmax(1)
-       acc = (predicted == y).sum().item() / y.size(0)
-       self.log('Val Accuracy', acc, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+       self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True)
+       self.log('val_acc', acc, on_step=True, on_epoch=True, prog_bar=True)
+       self.log('val_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True)
 
-       return loss
+       return {'loss': loss, 'val_acc': acc, 'val_top5_acc': top5_acc}
+    
+    def on_validation_epoch_end(self):
+        avg_acc = self.accuracy.compute()
+        avg_top5_acc = self.top5_accuracy.compute()
+        self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
+        self.log('avg_val_acc', avg_acc, sync_dist=True)
+        self.log('avg_val_top5_acc', avg_top5_acc, sync_dist=True)
+        self.accuracy.reset()
+        self.top5_accuracy.reset()
+    
+    def on_validation_end(self):
+        overall_avg_accuracy = np.mean(self.epoch_accuracies)
+        print(f'Overall Average Top-1 Validation Accuracy across all epochs: {overall_avg_accuracy}')
 
     def configure_optimizers(self):
     # Different learning rate for fine-tuning pre-trained layers
@@ -121,7 +136,7 @@ class SimCLR_eval(pl.LightningModule):
 
         return torch.optim.Adam(self.parameters(), lr=self.lr)
 
-class ValDataset(Dataset):
+class LabeledDataset(Dataset):
     def __init__(self, folder_path, labels_json_path, transform=None):
         self.folder_path = folder_path
         self.transform = transform
@@ -234,15 +249,21 @@ if __name__ == '__main__':
         Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
     
-    val_folder = "./val_labeled_test"
+    folder = "./val_labeled"
     label_folder = "./metadata_02242020.json"
 
-    val_dataset = ValDataset(val_folder, label_folder, transform=train_transforms)
-    val_loader = DataLoader(val_dataset, batch_size=10, shuffle=False, num_workers=0)
+    full_dataset = LabeledDataset(folder, label_folder, transform=train_transforms)
+    train_size = int(0.8 * len(full_dataset))
+    val_size = len(full_dataset) - train_size
+    train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
+
+    # DataLoader for the training and validation sets
+    train_loader = DataLoader(train_dataset, batch_size=10, shuffle=True, num_workers=4)
+    val_loader = DataLoader(val_dataset, batch_size=10, shuffle=False, num_workers=4)
 
     pl.seed_everything(42)  # For reproducibility
 
-    pretrained_filename = os.path.join(CHECKPOINT_PATH, 'SimCLR.ckpt/lightning_logs/version_6/checkpoints/epoch=0-step=13.ckpt')
+    pretrained_filename = '/checkpoints/Full_SimCLR_test.ckpt/lightning_logs/version_1/checkpoints/epoch=18-step=5700.ckpt' #os.path.join(CHECKPOINT_PATH, 'Full_SimCLR_test.ckpt')
     print(f'Found pretrained model at {pretrained_filename}, loading...')
     # Update to the correct class name and possibly adjust for any required initialization arguments
     sim_model = SimCLRVideo.load_from_checkpoint(pretrained_filename)
@@ -253,8 +274,8 @@ if __name__ == '__main__':
     trainer = pl.Trainer(
         max_epochs=50,
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
-        callbacks=[ModelCheckpoint(dirpath='./checkpoints/', monitor='Train Acc', mode='max')], log_every_n_steps=2
+        callbacks=[ModelCheckpoint(dirpath='./checkpoints/', monitor='train_acc', mode='max')], log_every_n_steps=2
     )
 
     # Start the training and validation process
-    trainer.fit(fine_tuning_model, train_dataloaders=val_loader)
+    trainer.fit(fine_tuning_model, train_dataloaders=train_loader, val_dataloaders=val_loader)
