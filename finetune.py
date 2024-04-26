@@ -258,8 +258,8 @@ if __name__ == '__main__':
     train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
 
     # DataLoader for the training and validation sets
-    train_loader = DataLoader(train_dataset, batch_size=10, shuffle=True, num_workers=4)
-    val_loader = DataLoader(val_dataset, batch_size=10, shuffle=False, num_workers=4)
+    train_loader = DataLoader(train_dataset, batch_size=10, shuffle=True, num_workers=0)
+    val_loader = DataLoader(val_dataset, batch_size=10, shuffle=False, num_workers=0)
 
     pl.seed_everything(42)  # For reproducibility
 
