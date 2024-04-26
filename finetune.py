@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import torch
 import torchmetrics
+from torch.cuda.amp import GradScaler, autocast
 import torch.nn as nn
 from torch.utils.data import DataLoader, random_split, Dataset
 from torchvision import transforms
@@ -51,16 +52,32 @@ class SimCLR_eval(pl.LightningModule):
         self.accuracy = torchmetrics.Accuracy(top_k=1, task='binary')
         self.top5_accuracy = torchmetrics.Accuracy(top_k=5, task='binary')
         self.epoch_accuracies = []
+        self.scaler = GradScaler()
 
     def forward(self, X):
         features = self.model(X)  # Get features from the base model
         return self.classifier(features)
 
     def training_step(self, batch, batch_idx):
+    #    x, y = batch
+    #    y = adjust_labels(y)
+    #    logits = self(x)
+    #    loss = self.loss(logits, y)
        x, y = batch
        y = adjust_labels(y)
-       logits = self(x)
-       loss = self.loss(logits, y)
+        
+       with autocast():
+            logits = self(x)
+            loss = self.loss(logits, y)
+        
+       self.scaler.scale(loss).backward()
+
+        # Gradient accumulation
+       if (batch_idx + 1) % 20 == 0:  # Adjust this value based on desired accumulation steps
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
+            self.optimizer.zero_grad()
+
        _, preds = torch.max(logits, dim=1)
        acc = self.accuracy(preds, y)
        top5_acc = self.top5_accuracy(preds, y)
@@ -139,8 +156,8 @@ class SimCLR_eval(pl.LightningModule):
         #     {'params': self.model.parameters(), 'lr': base_lr},
         #     {'params': self.classifier.parameters(), 'lr': classifier_lr},
         # ], lr=self.lr, momentum=0.9)
-
-        return torch.optim.Adam(self.parameters(), lr=self.lr)
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        return self.optimizer
 
 class LabeledDataset(Dataset):
     def __init__(self, folder_path, labels_json_path, transform=None):
@@ -264,8 +281,8 @@ if __name__ == '__main__':
     train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
 
     # DataLoader for the training and validation sets
-    train_loader = DataLoader(train_dataset, batch_size=250, shuffle=True, num_workers=0)
-    val_loader = DataLoader(val_dataset, batch_size=250, shuffle=False, num_workers=0)
+    train_loader = DataLoader(train_dataset, batch_size=20, shuffle=True, num_workers=0, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=20, shuffle=False, num_workers=0, pin_memory=True)
 
     pl.seed_everything(42)  # For reproducibility
 
