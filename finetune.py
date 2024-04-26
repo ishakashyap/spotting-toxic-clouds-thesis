@@ -65,9 +65,9 @@ class SimCLR_eval(pl.LightningModule):
        acc = self.accuracy(preds, y)
        top5_acc = self.top5_accuracy(preds, y)
 
-       self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True)
-       self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True)
-       self.log('train_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True)
+       self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+       self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+       self.log('train_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
     #    self.log('Cross Entropy loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
 
     #    predicted = z.argmax(1)
@@ -84,6 +84,8 @@ class SimCLR_eval(pl.LightningModule):
        return {'loss': loss, 'train_acc': acc, 'train_top5_acc': top5_acc}
     
     def on_train_epoch_end(self):
+        avg_acc = self.accuracy.update()
+        avg_top5_acc = self.top5_accuracy.update()
         avg_acc = self.accuracy.compute()
         avg_top5_acc = self.top5_accuracy.compute()
         self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
@@ -105,18 +107,20 @@ class SimCLR_eval(pl.LightningModule):
        acc = self.accuracy(preds, y)
        top5_acc = self.top5_accuracy(preds, y)
 
-       self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True)
-       self.log('val_acc', acc, on_step=True, on_epoch=True, prog_bar=True)
-       self.log('val_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True)
+       self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+       self.log('val_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+       self.log('val_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
 
        return {'loss': loss, 'val_acc': acc, 'val_top5_acc': top5_acc}
     
     def on_validation_epoch_end(self):
+        avg_acc = self.accuracy.update()
+        avg_top5_acc = self.top5_accuracy.update()
         avg_acc = self.accuracy.compute()
         avg_top5_acc = self.top5_accuracy.compute()
         self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
-        self.log('avg_val_acc', avg_acc, sync_dist=True)
-        self.log('avg_val_top5_acc', avg_top5_acc, sync_dist=True)
+        self.log('avg_val_acc', avg_acc, sync_dist=True, sync_dist=True)
+        self.log('avg_val_top5_acc', avg_top5_acc, sync_dist=True, sync_dist=True)
         self.accuracy.reset()
         self.top5_accuracy.reset()
     
@@ -258,8 +262,8 @@ if __name__ == '__main__':
     train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
 
     # DataLoader for the training and validation sets
-    train_loader = DataLoader(train_dataset, batch_size=10, shuffle=True, num_workers=0)
-    val_loader = DataLoader(val_dataset, batch_size=10, shuffle=False, num_workers=0)
+    train_loader = DataLoader(train_dataset, batch_size=6, shuffle=True, num_workers=0)
+    val_loader = DataLoader(val_dataset, batch_size=6, shuffle=False, num_workers=0)
 
     pl.seed_everything(42)  # For reproducibility
 
