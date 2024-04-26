@@ -119,8 +119,8 @@ class SimCLR_eval(pl.LightningModule):
         avg_acc = self.accuracy.compute()
         avg_top5_acc = self.top5_accuracy.compute()
         self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
-        self.log('avg_val_acc', avg_acc, sync_dist=True, sync_dist=True)
-        self.log('avg_val_top5_acc', avg_top5_acc, sync_dist=True, sync_dist=True)
+        self.log('avg_val_acc', avg_acc, sync_dist=True)
+        self.log('avg_val_top5_acc', avg_top5_acc, sync_dist=True)
         self.accuracy.reset()
         self.top5_accuracy.reset()
     
