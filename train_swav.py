@@ -235,10 +235,10 @@ def main():
         logger.info("Initializing mixed precision done.")
 
     # wrap model
-    model = nn.parallel.DistributedDataParallel(
-        model,
-        device_ids=[args.gpu_to_work_on]
-    )
+    # model = nn.parallel.DistributedDataParallel(
+    #     model,
+    #     device_ids=[args.gpu_to_work_on]
+    # )
 
     # optionally resume from a checkpoint
     to_restore = {"epoch": 0}
