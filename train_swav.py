@@ -344,7 +344,7 @@ def train(train_loader, model, optimizer, epoch, lr_schedule, queue):
                         use_the_queue = True
                         out = torch.cat((torch.mm(
                             queue[i],
-                            model.modules.prototypes.weight.t()
+                            model.prototypes.weight.t()
                         ), out))
                     # fill the queue
                     queue[i, bs:] = queue[i, :-bs].clone()
