@@ -323,9 +323,9 @@ def train(train_loader, model, optimizer, epoch, lr_schedule, queue):
 
         # normalize the prototypes
         with torch.no_grad():
-            w = model.module.prototypes.weight.data.clone()
+            w = model.modules.prototypes.weight.data.clone()
             w = nn.functional.normalize(w, dim=1, p=2)
-            model.module.prototypes.weight.copy_(w)
+            model.modules.prototypes.weight.copy_(w)
 
         # ============ multi-res forward passes ... ============
         embedding, output = model(inputs)
@@ -344,7 +344,7 @@ def train(train_loader, model, optimizer, epoch, lr_schedule, queue):
                         use_the_queue = True
                         out = torch.cat((torch.mm(
                             queue[i],
-                            model.module.prototypes.weight.t()
+                            model.modules.prototypes.weight.t()
                         ), out))
                     # fill the queue
                     queue[i, bs:] = queue[i, :-bs].clone()
