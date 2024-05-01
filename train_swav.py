@@ -189,7 +189,7 @@ def main():
     train_dataset = SimCLRDataset(train_folder, transform=train_transforms)
     train_loader = DataLoader(train_dataset, batch_size=10, shuffle=True, num_workers=7, persistent_workers=True)
 
-    sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+    # sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
 
     logger.info("Building data done with {} images loaded.".format(len(train_dataset)))
 
