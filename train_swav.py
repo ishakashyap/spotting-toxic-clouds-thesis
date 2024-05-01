@@ -20,7 +20,7 @@ import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 import torch.optim
 import apex
-from apex.apex.parallel import LARC
+from apex.parallel.LARC import LARC
 from torch.utils.data import DataLoader, random_split, Dataset
 from torchvision import transforms
 import torch.optim as optim
