@@ -29,11 +29,12 @@ def adjust_labels(y):
     return y_adjusted
 
 class SimCLR_eval(pl.LightningModule):
-    def __init__(self, lr, model=None, linear_eval=False, fine_tune=False):
+    def __init__(self, lr, model=None, linear_eval=False, fine_tune=False, accumulation_steps=20):
         super().__init__()
         self.lr = lr
         self.linear_eval = linear_eval
         self.fine_tune = fine_tune
+        self.accumulation_steps = accumulation_steps
         
         # Ensure the base model is in training mode if we're fine-tuning
         if self.fine_tune:
@@ -73,7 +74,7 @@ class SimCLR_eval(pl.LightningModule):
        self.scaler.scale(loss).backward()
 
         # Gradient accumulation
-       if (batch_idx + 1) % 20 == 0:  # Adjust this value based on desired accumulation steps
+       if (batch_idx + 1) % self.accumulation_steps == 0:  # Adjust this value based on desired accumulation steps
             self.scaler.step(self.optimizer)
             self.scaler.update()
             self.optimizer.zero_grad()
@@ -258,6 +259,7 @@ if __name__ == '__main__':
     CHECKPOINT_PATH = "./checkpoints"
     os.makedirs(CHECKPOINT_PATH, exist_ok=True)
     torch.set_float32_matmul_precision('medium')
+    torch.backends.cuda.matmul.allow_tf32 = True
 
     # TODO: Remove transformations
     train_transforms = Compose([
@@ -281,17 +283,27 @@ if __name__ == '__main__':
     train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
 
     # DataLoader for the training and validation sets
-    train_loader = DataLoader(train_dataset, batch_size=20, shuffle=True, num_workers=0, pin_memory=True)
-    val_loader = DataLoader(val_dataset, batch_size=20, shuffle=False, num_workers=0, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
 
     pl.seed_everything(42)  # For reproducibility
 
     pretrained_filename = './checkpoints/Full_SimCLR_test.ckpt/lightning_logs/version_1/checkpoints/epoch=18-step=5700.ckpt' #os.path.join(CHECKPOINT_PATH, 'Full_SimCLR_test.ckpt')
     print(f'Found pretrained model at {pretrained_filename}, loading...')
     # Update to the correct class name and possibly adjust for any required initialization arguments
-    sim_model = SimCLRVideo.load_from_checkpoint(pretrained_filename)
-    backbone_model = sim_model.model
-    fine_tuning_model = SimCLR_eval(lr=1e-3, model=backbone_model, fine_tune=True, linear_eval=False)
+    checkpoint = torch.load(pretrained_filename, map_location='cpu')
+    model_state_dict = checkpoint['state_dict']
+    optimizer_state_dict = checkpoint.get('optimizer_state', None)
+    # sim_model = SimCLRVideo.load_from_checkpoint(pretrained_filename)
+    # backbone_model = sim_model.model
+    model = SimCLR_eval(lr=1e-3, model=None, fine_tune=True, linear_eval=False, accumulation_steps=20)
+    model.load_state_dict(model_state_dict)
+    model.eval() 
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    if optimizer_state_dict:
+        optimizer.load_state_dict(optimizer_state_dict)
+    # fine_tuning_model = SimCLR_eval(lr=1e-3, model=backbone_model, fine_tune=True, linear_eval=False, accumulation_steps=20)
     # optimizer = optim.Adam(model.parameters(), lr=1e-2)
 
     trainer = pl.Trainer(
@@ -301,4 +313,4 @@ if __name__ == '__main__':
     )
 
     # Start the training and validation process
-    trainer.fit(fine_tuning_model, train_dataloaders=train_loader, val_dataloaders=val_loader)
+    trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=val_loader)
