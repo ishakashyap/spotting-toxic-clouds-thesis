@@ -24,6 +24,7 @@ from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from train import SimCLRVideo
 
 def adjust_labels(y):
+    y = y.detach()
     # Map label 16 to 0 and label 23 to 1
     y_adjusted = torch.where(y == 16, torch.zeros_like(y), torch.ones_like(y))
     return y_adjusted
@@ -64,31 +65,31 @@ class SimCLR_eval(pl.LightningModule):
     #    y = adjust_labels(y)
     #    logits = self(x)
     #    loss = self.loss(logits, y)
-       x, y = batch
-       y = adjust_labels(y)
-        
-       with autocast():
-            logits = self(x)
-            loss = self.loss(logits, y)
-        
-       self.scaler.scale(loss).backward()
+        x, y = batch
+        y = adjust_labels(y)  # Make sure this function does not retain any graph
 
-        # Gradient accumulation
-       if (batch_idx + 1) % self.accumulation_steps == 0:  # Adjust this value based on desired accumulation steps
+        with autocast():  # Assuming you are using mixed precision
+            logits = self(x)
+            loss = self.loss(logits, y) / self.accumulation_steps  # Normalizing the loss
+
+        # Autocast context should not enclose the backward pass
+        self.scaler.scale(loss).backward(retain_graph=False)
+
+        if (batch_idx + 1) % self.accumulation_steps == 0:
             self.scaler.step(self.optimizer)
             self.scaler.update()
             self.optimizer.zero_grad()
 
-       _, preds = torch.max(logits, dim=1)
-       acc = self.accuracy(preds, y)
-       top5_acc = self.top5_accuracy(preds, y)
+        _, preds = torch.max(logits, dim=1)
+        acc = self.accuracy(preds, y)
+        top5_acc = self.top5_accuracy(preds, y)
 
-       self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
-       self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
-       self.log('train_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log('train_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
 
-       avg_acc = self.accuracy.update(preds, y)
-       avg_top5_acc = self.top5_accuracy.update(preds, y)
+        avg_acc = self.accuracy.update(preds, y)
+        avg_top5_acc = self.top5_accuracy.update(preds, y)
     #    self.log('Cross Entropy loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
 
     #    predicted = z.argmax(1)
@@ -102,7 +103,7 @@ class SimCLR_eval(pl.LightningModule):
     #    with open(log_path, 'a') as f:
     #         f.write(f"Batch {batch_idx}: Loss: {loss.item()}, Acc: {acc*100:.2f}%, Labels: {y.tolist()}\n")
 
-       return {'loss': loss, 'train_acc': acc, 'train_top5_acc': top5_acc}
+        return {'loss': loss, 'train_acc': acc, 'train_top5_acc': top5_acc}
     
     def on_train_epoch_end(self):
         avg_acc = self.accuracy.compute()
