@@ -252,6 +252,11 @@ def parse_args():
     args = parser.parse_args()
     return args
 
+def fix_state_dict(state_dict):
+    # Remove the 'model.' prefix from each key
+    new_state_dict = {key.replace("model.", ""): value for key, value in state_dict.items()}
+    return new_state_dict
+
 if __name__ == '__main__':
     args = parse_args()
 
@@ -299,7 +304,7 @@ if __name__ == '__main__':
     # sim_model = SimCLRVideo.load_from_checkpoint(pretrained_filename)
     # backbone_model = sim_model.model
     # model = SimCLR_eval(lr=1e-3, model=None, fine_tune=True, linear_eval=False, accumulation_steps=20)
-    model.load_state_dict(torch.load(pretrained_filename, map_location='cpu'))
+    model.load_state_dict(torch.load(pretrained_filename, map_location='cpu')['state_dict'])
     model.eval() 
 
     # fine_tuning_model = SimCLR_eval(lr=1e-3, model=backbone_model, fine_tune=True, linear_eval=False, accumulation_steps=20)
