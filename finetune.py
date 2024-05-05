@@ -288,22 +288,20 @@ if __name__ == '__main__':
     val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
 
     pl.seed_everything(42)  # For reproducibility
+    weights = R3D_18_Weights.DEFAULT
+    model = r3d_18(weights=weights)
 
-    pretrained_filename = './checkpoints/Full_SimCLR_test.ckpt/lightning_logs/version_1/checkpoints/epoch=18-step=5700.ckpt' #os.path.join(CHECKPOINT_PATH, 'Full_SimCLR_test.ckpt')
+    pretrained_filename = 'Full_SimCLR.pth' #os.path.join(CHECKPOINT_PATH, 'Full_SimCLR_test.ckpt')
     print(f'Found pretrained model at {pretrained_filename}, loading...')
     # Update to the correct class name and possibly adjust for any required initialization arguments
-    checkpoint = torch.load(pretrained_filename, map_location='cpu')
-    model_state_dict = checkpoint['state_dict']
-    optimizer_state_dict = checkpoint.get('optimizer_state', None)
+    # model_state_dict = checkpoint['state_dict']
+    # optimizer_state_dict = checkpoint.get('optimizer_state', None)
     # sim_model = SimCLRVideo.load_from_checkpoint(pretrained_filename)
     # backbone_model = sim_model.model
-    model = SimCLR_eval(lr=1e-3, model=None, fine_tune=True, linear_eval=False, accumulation_steps=20)
-    model.load_state_dict(model_state_dict)
+    # model = SimCLR_eval(lr=1e-3, model=None, fine_tune=True, linear_eval=False, accumulation_steps=20)
+    model.load_state_dict(torch.load(pretrained_filename, map_location='cpu'))
     model.eval() 
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-    if optimizer_state_dict:
-        optimizer.load_state_dict(optimizer_state_dict)
     # fine_tuning_model = SimCLR_eval(lr=1e-3, model=backbone_model, fine_tune=True, linear_eval=False, accumulation_steps=20)
     # optimizer = optim.Adam(model.parameters(), lr=1e-2)
 
