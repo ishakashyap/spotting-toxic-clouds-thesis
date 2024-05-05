@@ -296,7 +296,7 @@ if __name__ == '__main__':
     weights = R3D_18_Weights.DEFAULT
     model = r3d_18(weights=weights)
 
-    pretrained_filename = 'Full_SimCLR.pth' #os.path.join(CHECKPOINT_PATH, 'Full_SimCLR_test.ckpt')
+    pretrained_filename = 'SimCLR_test.pth' #os.path.join(CHECKPOINT_PATH, 'Full_SimCLR_test.ckpt')
     print(f'Found pretrained model at {pretrained_filename}, loading...')
     # Update to the correct class name and possibly adjust for any required initialization arguments
     # model_state_dict = checkpoint['state_dict']
@@ -305,10 +305,11 @@ if __name__ == '__main__':
     # backbone_model = sim_model.model
     # model = SimCLR_eval(lr=1e-3, model=None, fine_tune=True, linear_eval=False, accumulation_steps=20)
     checkpoint = torch.load(pretrained_filename, map_location='cpu')
-    for key in list(checkpoint.keys()):
-        if 'model.' in key:
-            checkpoint[key.replace('model.', '')] = checkpoint[key]
-            del checkpoint[key]
+    print(checkpoint.keys())
+    # for key in list(checkpoint.keys()):
+    #     if 'model.' in key:
+    #         checkpoint[key.replace('model.', '')] = checkpoint[key]
+    #         del checkpoint[key]
     model.load_state_dict(checkpoint)
     model.eval() 
 
