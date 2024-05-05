@@ -35,7 +35,7 @@ class ProjectionHead(nn.Module):
 
 class SimCLRVideo(pl.LightningModule):
 
-    def __init__(self, hidden_dim, lr, temperature, weight_decay, max_epochs=50):
+    def __init__(self, hidden_dim, lr, temperature, weight_decay, max_epochs=50, num_classes=2):
         super().__init__()
         self.save_hyperparameters()
         assert self.hparams.temperature > 0.0, 'The temperature must be a positive float!'
@@ -54,21 +54,36 @@ class SimCLRVideo(pl.LightningModule):
             nn.Linear(4 * hidden_dim, hidden_dim),
         )
 
-    def configure_optimizers(self):
-        optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
-        lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.hparams.max_epochs, eta_min=self.hparams.lr / 50)
-        return [optimizer], [lr_scheduler]
+        self.fc = nn.Linear(hidden_dim, num_classes)
 
     # def configure_callbacks(self):
     #     checkpoint = ModelCheckpoint(monitor="train_loss")
     #     return [checkpoint]
 
     def forward(self, x):
-        # Forward pass through the base model and projection head
-        features = self.model(x)
-        projections = self.projection_head(features)
-        return projections
+        # Extract features
+        x = self.model(x)
 
+        # Pass through the projection head
+        x = self.projection_head(x)
+
+        # Final classification layer
+        x = self.fc(x)
+        return x
+
+    # def forward(self, x):
+    #     # Forward pass through the base model and projection head
+    #     features = self.model(x)
+    #     projections = self.projection_head(features)
+    #     # TODO: ADD FULLY CONNECTED LAYER TO LOAD MODEL x = self.fc(x)
+
+    #     return projections
+
+    def configure_optimizers(self):
+        optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
+        lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.hparams.max_epochs, eta_min=self.hparams.lr / 50)
+        return [optimizer], [lr_scheduler]
+    
     def info_nce_loss(self, projections, mode='train'):
         # Calculate cosine similarity
         cos_sim = nn.functional.cosine_similarity(projections[:, None, :], projections[None, :, :], dim=-1)
@@ -320,7 +335,7 @@ if __name__ == '__main__':
         label_folder = "./metadata_02242020.json"
         # if args.model == 'simclr':
         dataset = SimCLRDataset(train_folder, transform=train_transforms)
-        train_loader = DataLoader(dataset, batch_size=10, shuffle=True, num_workers=7, persistent_workers=True)
+        train_loader = DataLoader(dataset, batch_size=16, shuffle=True, num_workers=7, persistent_workers=True)
 
         # val_dataset = ValDataset(val_folder, label_folder, transform=train_transforms)
         # val_loader = DataLoader(val_dataset, batch_size=2, shuffle=False, num_workers=7)
