@@ -304,7 +304,7 @@ if __name__ == '__main__':
     # sim_model = SimCLRVideo.load_from_checkpoint(pretrained_filename)
     # backbone_model = sim_model.model
     # model = SimCLR_eval(lr=1e-3, model=None, fine_tune=True, linear_eval=False, accumulation_steps=20)
-    checkpoint = torch.load(pretrained_filename, map_location='cpu')['model_state_dict']
+    checkpoint = torch.load(pretrained_filename, map_location='cpu')
     for key in list(checkpoint.keys()):
         if 'model.' in key:
             checkpoint[key.replace('model.', '')] = checkpoint[key]
