@@ -30,7 +30,7 @@ def adjust_labels(y):
     return y_adjusted
 
 class SimCLR_eval(pl.LightningModule):
-    def __init__(self, lr, hidden_dim, linear_eval=False, fine_tune=False, accumulation_steps=20):
+    def __init__(self, lr, hidden_dim, linear_eval=False, fine_tune=False, accumulation_steps=32):
         super().__init__()
         self.lr = lr
         self.linear_eval = linear_eval
@@ -114,7 +114,7 @@ class SimCLR_eval(pl.LightningModule):
     #    self.log('Cross Entropy loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
 
     #    predicted = z.argmax(1)
-    #    acc = (predicted == y).sum().item() / y.size(0)
+    #    acc = (predicted == y).sum().item() / y.size(0)ho
     #    self.log('Train Acc', acc, on_step=False, on_epoch=True, prog_bar=True, logger=True)
     #    log_dir = 'logs'
     #    log_file = 'training_logs.txt'
