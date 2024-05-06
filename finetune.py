@@ -54,16 +54,15 @@ class SimCLR_eval(pl.LightningModule):
         
         # Ensure the base model is in training mode if we're fine-tuning
         if self.fine_tune:
-            model.train()
+            self.model.train()
         elif self.linear_eval:
-            model.eval()  # Only in linear_eval mode, we keep the base model in eval mode
+            self.model.eval()  # Only in linear_eval mode, we keep the base model in eval mode
 
         self.mlp = nn.Sequential(
             nn.Linear(512, 2),
         )
 
         # Incorporate the base model with the newly added MLP for classification
-        self.model = model
         self.classifier = self.mlp
         self.loss = nn.CrossEntropyLoss()
         self.accuracy = torchmetrics.Accuracy(top_k=1, task='binary')
@@ -344,7 +343,6 @@ if __name__ == '__main__':
     #         checkpoint[key.replace('model.', '')] = checkpoint[key]
     #         del checkpoint[key]
     # model.load_state_dict(checkpoint)
-    model.eval() 
 
     # fine_tuning_model = SimCLR_eval(lr=1e-3, model=backbone_model, fine_tune=True, linear_eval=False, accumulation_steps=20)
     # optimizer = optim.Adam(model.parameters(), lr=1e-2)
