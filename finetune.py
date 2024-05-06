@@ -293,11 +293,13 @@ if __name__ == '__main__':
     val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
 
     pl.seed_everything(42)  # For reproducibility
-    weights = R3D_18_Weights.DEFAULT
-    model = r3d_18(weights=weights)
 
     pretrained_filename = 'SimCLR_test.pth' #os.path.join(CHECKPOINT_PATH, 'Full_SimCLR_test.ckpt')
     print(f'Found pretrained model at {pretrained_filename}, loading...')
+    checkpoint = torch.load(pretrained_filename, map_location='cpu')
+    model = SimCLRVideo(hidden_dim=224, lr=1e-3, temperature=0.07, weight_decay=1e-4, max_epochs=50)
+    model.load_state_dict(checkpoint)
+
     # Update to the correct class name and possibly adjust for any required initialization arguments
     # model_state_dict = checkpoint['state_dict']
     # optimizer_state_dict = checkpoint.get('optimizer_state', None)
@@ -305,16 +307,28 @@ if __name__ == '__main__':
     # backbone_model = sim_model.model
     # model = SimCLR_eval(lr=1e-3, model=None, fine_tune=True, linear_eval=False, accumulation_steps=20)
     # self.model = r3d_18(pretrained=True)  # Pretrained 3D ResNet
-    model.fc = nn.Linear(224, 2)
+    # model.fc = nn.Identity()
+    # hidden_dim = 224 
+    # feature_size = 512  # Known feature size for r3d_18 before the final layer
+
+    # projection_head = nn.Sequential(
+    #     nn.Linear(feature_size, 4 * hidden_dim),
+    #     nn.ReLU(inplace=True),
+    #     nn.Linear(4 * hidden_dim, hidden_dim),
+    # )
+
+    # model.projection_head = projection_head
+
+    # model.fc = nn.Linear(hidden_dim, 2)
     
-    checkpoint = torch.load(pretrained_filename, map_location='cpu')
-    # print(checkpoint.keys())
-    for key in list(checkpoint.keys()):
-        print(key)
-        if 'model.' in key:
-            checkpoint[key.replace('model.', '')] = checkpoint[key]
-            del checkpoint[key]
-    model.load_state_dict(checkpoint)
+    # checkpoint = torch.load(pretrained_filename, map_location='cpu')
+    # # print(checkpoint.keys())
+    # for key in list(checkpoint.keys()):
+    #     print(key)
+    #     if 'model.' in key:
+    #         checkpoint[key.replace('model.', '')] = checkpoint[key]
+    #         del checkpoint[key]
+    # model.load_state_dict(checkpoint)
     model.eval() 
 
     # fine_tuning_model = SimCLR_eval(lr=1e-3, model=backbone_model, fine_tune=True, linear_eval=False, accumulation_steps=20)
