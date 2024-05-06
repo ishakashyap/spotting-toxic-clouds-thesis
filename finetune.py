@@ -70,9 +70,16 @@ class SimCLR_eval(pl.LightningModule):
         self.epoch_accuracies = []
         self.scaler = GradScaler()
 
-    def forward(self, X):
-        features = self.model(X)  # Get features from the base model
-        return self.classifier(features)
+    def forward(self, x):
+        # Extract features
+        x = self.model(x)
+
+        # Pass through the projection head
+        x = self.projection_head(x)
+
+        # Final classification layer
+        x = self.fc(x)
+        return x
 
     def training_step(self, batch, batch_idx):
     #    x, y = batch
