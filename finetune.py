@@ -305,11 +305,12 @@ if __name__ == '__main__':
     # backbone_model = sim_model.model
     # model = SimCLR_eval(lr=1e-3, model=None, fine_tune=True, linear_eval=False, accumulation_steps=20)
     checkpoint = torch.load(pretrained_filename, map_location='cpu')
-    print(checkpoint.keys())
-    # for key in list(checkpoint.keys()):
-    #     if 'model.' in key:
-    #         checkpoint[key.replace('model.', '')] = checkpoint[key]
-    #         del checkpoint[key]
+    # print(checkpoint.keys())
+    for key in list(checkpoint.keys()):
+        print(key)
+        if 'model.' in key:
+            checkpoint[key.replace('model.', '')] = checkpoint[key]
+            del checkpoint[key]
     model.load_state_dict(checkpoint)
     model.eval() 
 
