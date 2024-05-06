@@ -58,12 +58,12 @@ class SimCLR_eval(pl.LightningModule):
         elif self.linear_eval:
             self.model.eval()  # Only in linear_eval mode, we keep the base model in eval mode
 
-        self.mlp = nn.Sequential(
-            nn.Linear(512, 2),
-        )
+        # self.mlp = nn.Sequential(
+        #     nn.Linear(512, 2),
+        # )
 
         # Incorporate the base model with the newly added MLP for classification
-        self.classifier = self.mlp
+        # self.classifier = self.mlp
         self.loss = nn.CrossEntropyLoss()
         self.accuracy = torchmetrics.Accuracy(top_k=1, task='binary')
         self.top5_accuracy = torchmetrics.Accuracy(top_k=5, task='binary')
