@@ -105,7 +105,7 @@ class SimCLR_eval(pl.LightningModule):
         acc = self.accuracy(preds, y)
         top5_acc = self.top5_accuracy(preds, y)
 
-        self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+        # self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
         self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
         self.log('train_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
 
@@ -140,20 +140,21 @@ class SimCLR_eval(pl.LightningModule):
         print(f'Overall Average Top-1 Accuracy across all epochs: {overall_avg_accuracy}')
 
     def validation_step(self, batch, batch_idx):
-       x, y = batch
-       y = adjust_labels(y)
-       logits = self(x)
-       loss = self.loss(logits, y)
-       _, preds = torch.max(logits, dim=1)
-       acc = self.accuracy(preds, y)
-       top5_acc = self.top5_accuracy(preds, y)
+       with torch.no_grad():
+        x, y = batch
+        y = adjust_labels(y)
+        logits = self(x)
+        loss = self.loss(logits, y)
+        _, preds = torch.max(logits, dim=1)
+        acc = self.accuracy(preds, y)
+        top5_acc = self.top5_accuracy(preds, y)
 
-       self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
-       self.log('val_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
-       self.log('val_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log('val_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log('val_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
 
-       avg_acc = self.accuracy.update(preds, y)
-       avg_top5_acc = self.top5_accuracy.update(preds, y)
+        avg_acc = self.accuracy.update(preds, y)
+        avg_top5_acc = self.top5_accuracy.update(preds, y)
 
        return {'loss': loss, 'val_acc': acc, 'val_top5_acc': top5_acc}
     
