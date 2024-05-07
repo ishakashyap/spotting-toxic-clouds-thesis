@@ -89,18 +89,17 @@ class SimCLR_eval(pl.LightningModule):
         x, y = batch
         y = adjust_labels(y)  # Make sure this function does not retain any graph
 
-        with autocast():  # Assuming you are using mixed precision
-            logits = self(x)
-            loss = self.loss(logits, y) / self.accumulation_steps  # Normalizing the loss
+        with autocast():
+            logits = self(x)  # Get model predictions
+            loss = self.loss(logits, y)  # Compute loss normally without dividing by accumulation steps
 
-        # Autocast context should not enclose the backward pass
-        self.scaler.scale(loss).backward(retain_graph=False)
+        # Perform backward pass and scale loss under autocast
+        self.scaler.scale(loss).backward()
 
-        if (batch_idx + 1) % self.accumulation_steps == 0:
-    #     print("Going into accumulation \n")
-            self.scaler.step(self.optimizer)
-            self.scaler.update()
-            self.optimizer.zero_grad()
+        # Update the optimizer and scale, then zero out gradients every step
+        self.scaler.step(self.optimizer)
+        self.scaler.update()
+        self.optimizer.zero_grad()
 
         _, preds = torch.max(logits, dim=1)
         acc = self.accuracy(preds, y)
