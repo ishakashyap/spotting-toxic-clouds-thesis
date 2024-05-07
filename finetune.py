@@ -38,13 +38,24 @@ class SimCLRVideoLinearEval(pl.LightningModule):
         # Load the pre-trained 3D CNN model (you should adjust this based on how you handle pre-training)
         self.model = r3d_18(weights=R3D_18_Weights.DEFAULT)
         self.model.fc = nn.Identity()  # Ensure no final layer to interfere
-
+        
         # Freeze all layers of the model
         for param in self.model.parameters():
             param.requires_grad = False
 
+        # The MLP head for projection
+        feature_size = 512  # Known feature size for r3d_18 before the final layer
+        self.projection_head = nn.Sequential(
+            nn.Linear(feature_size, 4 * hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(4 * hidden_dim, hidden_dim),
+        )
+
+        self.fc = nn.Linear(224, 2)
+
+
         # Add a new classifier layer
-        self.classifier = nn.Linear(hidden_dim, num_classes)
+        # self.classifier = nn.Linear(hidden_dim, num_classes)
         self.accuracy = torchmetrics.Accuracy(top_k=1, task='binary')
         self.loss = nn.CrossEntropyLoss()
 
