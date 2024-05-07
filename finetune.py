@@ -38,7 +38,7 @@ class SimCLRVideoLinearEval(pl.LightningModule):
         # Load the pre-trained 3D CNN model (you should adjust this based on how you handle pre-training)
         self.model = r3d_18(weights=R3D_18_Weights.DEFAULT)
         self.model.fc = nn.Identity()  # Ensure no final layer to interfere
-        
+
         # Freeze all layers of the model
         for param in self.model.parameters():
             param.requires_grad = False
@@ -63,7 +63,7 @@ class SimCLRVideoLinearEval(pl.LightningModule):
         # Extract features using the pre-trained model
         features = self.model(x)
         # Classify features using the new classifier layer
-        return self.classifier(features)
+        return self.fc(features)
 
     def training_step(self, batch, batch_idx):
         x, y = batch
@@ -75,7 +75,7 @@ class SimCLRVideoLinearEval(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.classifier.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
+        optimizer = torch.optim.Adam(self.fc.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
         return optimizer
 
     def validate_step(self, batch, batch_idx):
