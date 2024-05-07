@@ -30,7 +30,7 @@ def adjust_labels(y):
     return y_adjusted
 
 class SimCLR_eval(pl.LightningModule):
-    def __init__(self, lr, hidden_dim, linear_eval=False, fine_tune=False, accumulation_steps=32):
+    def __init__(self, lr, hidden_dim, linear_eval=False, fine_tune=False, accumulation_steps=13):
         super().__init__()
         self.lr = lr
         self.linear_eval = linear_eval
