@@ -77,13 +77,13 @@ class SimCLRVideoLinearEval(pl.LightningModule):
         loss = self.loss(logits, y)
         _, preds = torch.max(logits, dim=1)
         acc = self.accuracy(preds, y)
-        self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True, rank_zero_only=True)
         return loss
     
     def on_train_epoch_end(self):
         avg_acc = self.accuracy.compute()
         self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
-        self.log('avg_train_acc', avg_acc, sync_dist=True)
+        self.log('avg_train_acc', avg_acc, sync_dist=True, rank_zero_only=True)
         self.accuracy.reset()
     
     def on_train_end(self):
@@ -101,14 +101,13 @@ class SimCLRVideoLinearEval(pl.LightningModule):
         loss = self.loss(logits, y)
         _, preds = torch.max(logits, dim=1)
         acc = self.accuracy(preds, y)
-        self.log('val_loss', loss, prog_bar=True)
-        self.log('val_acc', acc, prog_bar=True)
+        self.log('val_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True, rank_zero_only=True)
         return {'val_loss': loss, 'val_acc': acc}
     
     def on_validation_epoch_end(self):
         avg_acc = self.accuracy.compute()
         self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
-        self.log('avg_val_acc', avg_acc, sync_dist=True)
+        self.log('avg_val_acc', avg_acc, sync_dist=True, rank_zero_only=True)
         self.accuracy.reset()
     
     def on_validation_end(self):
