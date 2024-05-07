@@ -30,6 +30,53 @@ def adjust_labels(y):
     y_adjusted = y_adjusted.detach()
     return y_adjusted
 
+class SimCLRVideoLinearEval(pl.LightningModule):
+    def __init__(self, hidden_dim, lr, weight_decay, num_classes=2):
+        super().__init__()
+        self.save_hyperparameters()
+        
+        # Load the pre-trained 3D CNN model (you should adjust this based on how you handle pre-training)
+        self.model = r3d_18(weights=R3D_18_Weights.DEFAULT)
+        self.model.fc = nn.Identity()  # Ensure no final layer to interfere
+
+        # Freeze all layers of the model
+        for param in self.model.parameters():
+            param.requires_grad = False
+
+        # Add a new classifier layer
+        self.classifier = nn.Linear(hidden_dim, num_classes)
+        self.accuracy = torchmetrics.Accuracy(top_k=1, task='binary')
+        self.loss = nn.CrossEntropyLoss()
+
+    def forward(self, x):
+        # Extract features using the pre-trained model
+        features = self.model(x)
+        # Classify features using the new classifier layer
+        return self.classifier(features)
+
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        logits = self(x)
+        loss = self.loss(logits, y)
+        acc = self.accuracy(logits, y)
+        self.log('train_loss', loss, on_step=True, on_epoch=True)
+        self.log('train_acc', acc, on_step=True, on_epoch=True)
+        return loss
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.classifier.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
+        return optimizer
+
+    def validate_step(self, batch, batch_idx):
+        x, y = batch
+        logits = self(x)
+        loss = self.loss(logits, y)
+        acc = self.accuracy(logits, y)
+        self.log('val_loss', loss, prog_bar=True)
+        self.log('val_acc', acc, prog_bar=True)
+        return {'val_loss': loss, 'val_acc': acc}
+
+
 class SimCLR_eval(pl.LightningModule):
     def __init__(self, lr, hidden_dim, linear_eval=False, fine_tune=False, accumulation_steps=5):
         super().__init__()
@@ -131,7 +178,7 @@ class SimCLR_eval(pl.LightningModule):
 
         return {'loss': loss, 'train_acc': acc, 'train_top5_acc': top5_acc}
     
-    # def on_train_epoch_end(self):
+    def on_train_epoch_end(self):
         avg_acc = self.accuracy.compute()
         avg_top5_acc = self.top5_accuracy.compute()
         self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
@@ -146,31 +193,31 @@ class SimCLR_eval(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
        with torch.no_grad():
-        x, y = batch
-        y = adjust_labels(y)
-        logits = self(x)
-        loss = self.loss(logits, y)
-        _, preds = torch.max(logits, dim=1)
-        acc = self.accuracy(preds, y)
-        top5_acc = self.top5_accuracy(preds, y)
+            x, y = batch
+            y = adjust_labels(y)
+            logits = self(x)
+            loss = self.loss(logits, y)
+            _, preds = torch.max(logits, dim=1)
+            acc = self.accuracy(preds, y)
+            top5_acc = self.top5_accuracy(preds, y)
 
-        self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
-        self.log('val_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
-        self.log('val_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+            self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+            self.log('val_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+            self.log('val_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
 
-        avg_acc = self.accuracy.update(preds, y)
-        avg_top5_acc = self.top5_accuracy.update(preds, y)
+            avg_acc = self.accuracy.update(preds, y)
+            avg_top5_acc = self.top5_accuracy.update(preds, y)
 
        return {'loss': loss, 'val_acc': acc, 'val_top5_acc': top5_acc}
     
-    # def on_validation_epoch_end(self):
-    #     avg_acc = self.accuracy.compute()
-    #     avg_top5_acc = self.top5_accuracy.compute()
-    #     self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
-    #     self.log('avg_val_acc', avg_acc, sync_dist=True)
-    #     self.log('avg_val_top5_acc', avg_top5_acc, sync_dist=True)
-    #     self.accuracy.reset()
-    #     self.top5_accuracy.reset()
+    def on_validation_epoch_end(self):
+        avg_acc = self.accuracy.compute()
+        avg_top5_acc = self.top5_accuracy.compute()
+        self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
+        self.log('avg_val_acc', avg_acc, sync_dist=True)
+        self.log('avg_val_top5_acc', avg_top5_acc, sync_dist=True)
+        self.accuracy.reset()
+        self.top5_accuracy.reset()
     
     def on_validation_end(self):
         overall_avg_accuracy = np.mean(self.epoch_accuracies)
@@ -324,7 +371,7 @@ if __name__ == '__main__':
     pretrained_filename = 'SimCLR_test.pth' #os.path.join(CHECKPOINT_PATH, 'Full_SimCLR_test.ckpt')
     print(f'Found pretrained model at {pretrained_filename}, loading...')
     checkpoint = torch.load(pretrained_filename, map_location='cpu')
-    model = SimCLR_eval(lr=1e-3, hidden_dim=224, fine_tune=True, linear_eval=False, accumulation_steps=20)
+    model = SimCLRVideoLinearEval(lr=1e-3, hidden_dim=224, weight_decay=5e-4, num_classes=2)
     model.load_state_dict(checkpoint)
 
     # Update to the correct class name and possibly adjust for any required initialization arguments
