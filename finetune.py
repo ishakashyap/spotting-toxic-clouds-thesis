@@ -71,9 +71,11 @@ class SimCLRVideoLinearEval(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, y = batch
+        y = adjust_labels(y)
         logits = self(x)
         loss = self.loss(logits, y)
-        acc = self.accuracy(logits, y)
+        _, preds = torch.max(logits, dim=1)
+        acc = self.accuracy(preds, y)
         self.log('train_loss', loss, on_step=True, on_epoch=True)
         self.log('train_acc', acc, on_step=True, on_epoch=True)
         return loss
@@ -84,9 +86,11 @@ class SimCLRVideoLinearEval(pl.LightningModule):
 
     def validate_step(self, batch, batch_idx):
         x, y = batch
+        y = adjust_labels(y)
         logits = self(x)
         loss = self.loss(logits, y)
-        acc = self.accuracy(logits, y)
+        _, preds = torch.max(logits, dim=1)
+        acc = self.accuracy(preds, y)
         self.log('val_loss', loss, prog_bar=True)
         self.log('val_acc', acc, prog_bar=True)
         return {'val_loss': loss, 'val_acc': acc}
