@@ -94,7 +94,7 @@ class SimCLRVideoLinearEval(pl.LightningModule):
         optimizer = torch.optim.Adam(self.fc.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
         return optimizer
 
-    def validate_step(self, batch, batch_idx):
+    def validation_step(self, batch, batch_idx):
         x, y = batch
         y = adjust_labels(y)
         logits = self(x)
