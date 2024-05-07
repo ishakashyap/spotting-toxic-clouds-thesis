@@ -100,7 +100,7 @@ class SimCLR_eval(pl.LightningModule):
         self.scaler.scale(loss).backward()
         # Update the optimizer and scale, then zero out gradients every step
         self.scaler.step(self.optimizer)
-        self.scaler.update()
+        # self.scaler.update()
 
         _, preds = torch.max(logits, dim=1)
         acc = self.accuracy(preds, y)
