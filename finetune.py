@@ -91,7 +91,7 @@ class SimCLR_eval(pl.LightningModule):
 
         with autocast():
             logits = self(x)  # Get model predictions
-            loss = self.loss(logits, y)  # Compute loss normally without dividing by accumulation steps
+            loss = self.loss(logits, y.detach())  # Compute loss normally without dividing by accumulation steps
 
         self.optimizer.zero_grad()
 
@@ -100,6 +100,7 @@ class SimCLR_eval(pl.LightningModule):
         # Update the optimizer and scale, then zero out gradients every step
         self.scaler.step(self.optimizer)
         self.scaler.update()
+
 
 
         _, preds = torch.max(logits, dim=1)
