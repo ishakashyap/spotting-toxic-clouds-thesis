@@ -99,7 +99,7 @@ class SimCLR_eval(pl.LightningModule):
         self.scaler.scale(loss).backward()
         # Update the optimizer and scale, then zero out gradients every step
         # self.scaler.step(self.optimizer)
-        # self.optimizer.zero_grad()
+        self.optimizer.zero_grad()
         # self.scaler.update()
 
         with torch.no_grad():
