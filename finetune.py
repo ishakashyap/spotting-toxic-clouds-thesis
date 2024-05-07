@@ -57,6 +57,7 @@ class SimCLRVideoLinearEval(pl.LightningModule):
         # self.classifier = nn.Linear(hidden_dim, num_classes)
         self.accuracy = torchmetrics.Accuracy(top_k=1, task='binary')
         self.loss = nn.CrossEntropyLoss()
+        self.epoch_accuracies = []
 
     def forward(self, x):
         # Extract features
@@ -76,9 +77,18 @@ class SimCLRVideoLinearEval(pl.LightningModule):
         loss = self.loss(logits, y)
         _, preds = torch.max(logits, dim=1)
         acc = self.accuracy(preds, y)
-        self.log('train_loss', loss, on_step=True, on_epoch=True)
-        self.log('train_acc', acc, on_step=True, on_epoch=True)
+        self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
         return loss
+    
+    def on_train_epoch_end(self):
+        avg_acc = self.accuracy.compute()
+        self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
+        self.log('avg_train_acc', avg_acc, sync_dist=True)
+        self.accuracy.reset()
+    
+    def on_train_end(self):
+        overall_avg_accuracy = np.mean(self.epoch_accuracies)
+        print(f'Overall Average Top-1 Accuracy across all epochs: {overall_avg_accuracy}')
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.fc.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
@@ -94,6 +104,16 @@ class SimCLRVideoLinearEval(pl.LightningModule):
         self.log('val_loss', loss, prog_bar=True)
         self.log('val_acc', acc, prog_bar=True)
         return {'val_loss': loss, 'val_acc': acc}
+    
+    def on_validation_epoch_end(self):
+        avg_acc = self.accuracy.compute()
+        self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
+        self.log('avg_val_acc', avg_acc, sync_dist=True)
+        self.accuracy.reset()
+    
+    def on_validation_end(self):
+        overall_avg_accuracy = np.mean(self.epoch_accuracies)
+        print(f'Overall Average Top-1 Validation Accuracy across all epochs: {overall_avg_accuracy}')
 
 
 class SimCLR_eval(pl.LightningModule):
@@ -382,8 +402,8 @@ if __name__ == '__main__':
     train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
 
     # DataLoader for the training and validation sets
-    train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True, num_workers=0, pin_memory=True)
-    val_loader = DataLoader(val_dataset, batch_size=4, shuffle=False, num_workers=0, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True, num_workers=7, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=7, pin_memory=True)
 
     pl.seed_everything(42)  # For reproducibility
 
