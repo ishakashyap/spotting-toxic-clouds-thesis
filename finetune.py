@@ -111,6 +111,9 @@ class SimCLR_eval(pl.LightningModule):
 
         avg_acc = self.accuracy.update(preds, y)
         avg_top5_acc = self.top5_accuracy.update(preds, y)
+
+        self.accuracy.reset()
+        self.top5_accuracy.reset()
     #    self.log('Cross Entropy loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
 
     #    predicted = z.argmax(1)
