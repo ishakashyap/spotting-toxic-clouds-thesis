@@ -395,7 +395,7 @@ if __name__ == '__main__':
         Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
     
-    folder = "./val_labeled_test"
+    folder = "./val_labeled"
     label_folder = "./metadata_02242020.json"
 
     full_dataset = LabeledDataset(folder, label_folder, transform=train_transforms)
