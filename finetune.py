@@ -87,43 +87,44 @@ class SimCLR_eval(pl.LightningModule):
     #    y = adjust_labels(y)
     #    logits = self(x)
     #    loss = self.loss(logits, y)
-        x, y = batch
-        y = adjust_labels(y)  # Make sure this function does not retain any graph
+        with torch.no_grad():
+            x, y = batch
+            y = adjust_labels(y)  # Make sure this function does not retain any graph
 
-        with autocast():
-            logits = self(x)  # Get model predictions
-            loss = self.loss(logits, y)  # Compute loss normally without dividing by accumulation steps
+            with autocast():
+                logits = self(x)  # Get model predictions
+                loss = self.loss(logits, y)  # Compute loss normally without dividing by accumulation steps
 
-        self.optimizer.zero_grad()
+            self.optimizer.zero_grad()
 
-        # Perform backward pass and scale loss under autocast
-        self.scaler.scale(loss).backward()
-        # Update the optimizer and scale, then zero out gradients every step
-        self.scaler.step(self.optimizer)
-        # self.scaler.update()
+            # Perform backward pass and scale loss under autocast
+            self.scaler.scale(loss).backward()
+            # Update the optimizer and scale, then zero out gradients every step
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
 
-        _, preds = torch.max(logits, dim=1)
-        acc = self.accuracy(preds, y)
-        top5_acc = self.top5_accuracy(preds, y)
+            _, preds = torch.max(logits, dim=1)
+            acc = self.accuracy(preds, y)
+            top5_acc = self.top5_accuracy(preds, y)
 
-        # self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
-        self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
-        self.log('train_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+            # self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+            self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+            self.log('train_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
 
-        avg_acc = self.accuracy.update(preds, y)
-        avg_top5_acc = self.top5_accuracy.update(preds, y)
+            avg_acc = self.accuracy.update(preds, y)
+            avg_top5_acc = self.top5_accuracy.update(preds, y)
 
-        self.accuracy.reset()
-        self.top5_accuracy.reset()
-    #    self.log('Cross Entropy loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
+            self.accuracy.reset()
+            self.top5_accuracy.reset()
+        #    self.log('Cross Entropy loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
 
-    #    predicted = z.argmax(1)
-    #    acc = (predicted == y).sum().item() / y.size(0)ho
-    #    self.log('Train Acc', acc, on_step=False, on_epoch=True, prog_bar=True, logger=True)
-    #    log_dir = 'logs'
-    #    log_file = 'training_logs.txt'
-    #    log_path = os.path.join(log_dir, log_file)
-    #    os.makedirs('logs', exist_ok=True)
+        #    predicted = z.argmax(1)
+        #    acc = (predicted == y).sum().item() / y.size(0)ho
+        #    self.log('Train Acc', acc, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+        #    log_dir = 'logs'
+        #    log_file = 'training_logs.txt'
+        #    log_path = os.path.join(log_dir, log_file)
+        #    os.makedirs('logs', exist_ok=True)
        
     #    with open(log_path, 'a') as f:
     #         f.write(f"Batch {batch_idx}: Loss: {loss.item()}, Acc: {acc*100:.2f}%, Labels: {y.tolist()}\n")
