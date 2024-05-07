@@ -71,16 +71,16 @@ class SimCLR_eval(pl.LightningModule):
         self.epoch_accuracies = []
         self.scaler = GradScaler()
 
-    def forward(self, x):
-        # Extract features
-        x = self.model(x)
+    # def forward(self, x):
+    #     # Extract features
+    #     x = self.model(x)
 
-        # Pass through the projection head
-        x = self.projection_head(x)
+    #     # Pass through the projection head
+    #     x = self.projection_head(x)
 
-        # Final classification layer
-        x = self.fc(x)
-        return x
+    #     # Final classification layer
+    #     x = self.fc(x)
+    #     return x
 
     def training_step(self, batch, batch_idx):
     #    x, y = batch
@@ -94,12 +94,12 @@ class SimCLR_eval(pl.LightningModule):
             logits = self(x)  # Get model predictions
             loss = self.loss(logits, y)  # Compute loss normally without dividing by accumulation steps
 
-        self.optimizer.zero_grad()
 
         # Perform backward pass and scale loss under autocast
         self.scaler.scale(loss).backward()
         # Update the optimizer and scale, then zero out gradients every step
         self.scaler.step(self.optimizer)
+        self.optimizer.zero_grad()
         self.scaler.update()
 
         with torch.no_grad():
