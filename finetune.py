@@ -78,6 +78,8 @@ class SimCLRVideoLinearEval(pl.LightningModule):
         _, preds = torch.max(logits, dim=1)
         acc = self.accuracy(preds, y)
         self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True, rank_zero_only=True)
+
+        avg_acc = self.accuracy.update(preds, y)
         return loss
     
     def on_train_epoch_end(self):
@@ -102,6 +104,7 @@ class SimCLRVideoLinearEval(pl.LightningModule):
         _, preds = torch.max(logits, dim=1)
         acc = self.accuracy(preds, y)
         self.log('val_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True, rank_zero_only=True)
+        avg_acc = self.accuracy.update(preds, y)
         return {'val_loss': loss, 'val_acc': acc}
     
     def on_validation_epoch_end(self):
