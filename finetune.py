@@ -35,7 +35,7 @@ class SimCLR_eval(pl.LightningModule):
         self.lr = lr
         self.linear_eval = linear_eval
         self.fine_tune = fine_tune
-        # self.accumulation_steps = accumulation_steps
+        self.accumulation_steps = accumulation_steps
 
         weights = R3D_18_Weights.DEFAULT
         self.model = r3d_18(weights=weights)
@@ -68,7 +68,7 @@ class SimCLR_eval(pl.LightningModule):
         self.accuracy = torchmetrics.Accuracy(top_k=1, task='binary')
         self.top5_accuracy = torchmetrics.Accuracy(top_k=5, task='binary')
         self.epoch_accuracies = []
-        # self.scaler = GradScaler()
+        self.scaler = GradScaler()
 
     def forward(self, x):
         # Extract features
@@ -89,28 +89,18 @@ class SimCLR_eval(pl.LightningModule):
         x, y = batch
         y = adjust_labels(y)  # Make sure this function does not retain any graph
 
-        # with autocast():
-        #     logits = self(x)  # Get model predictions
-        #     loss = self.loss(logits, y)  # Compute loss normally without dividing by accumulation steps
+        with autocast():
+            logits = self(x)  # Get model predictions
+            loss = self.loss(logits, y)  # Compute loss normally without dividing by accumulation steps
 
-        # # Perform backward pass and scale loss under autocast
-        # self.scaler.scale(loss).backward()
+        # Update the optimizer and scale, then zero out gradients every step
+        self.scaler.step(self.optimizer)
+        self.scaler.update()
+        self.optimizer.zero_grad()
 
-        # # Update the optimizer and scale, then zero out gradients every step
-        # self.scaler.step(self.optimizer)
-        # self.scaler.update()
-        # self.optimizer.zero_grad()
+        # Perform backward pass and scale loss under autocast
+        self.scaler.scale(loss).backward()
 
-        # Compute the logits and loss without autocast
-        logits = self(x)  # Get model predictions
-        loss = self.loss(logits, y)  # Compute loss normally
-
-        # Perform backward pass directly on loss
-        loss.backward()
-
-        # Update the optimizer and reset gradients after each batch
-        self.optimizer.step()
-        self.optimizer.zero_grad() 
 
         _, preds = torch.max(logits, dim=1)
         acc = self.accuracy(preds, y)
