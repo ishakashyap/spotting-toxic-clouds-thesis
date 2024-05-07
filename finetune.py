@@ -30,7 +30,7 @@ def adjust_labels(y):
     return y_adjusted
 
 class SimCLR_eval(pl.LightningModule):
-    def __init__(self, lr, hidden_dim, linear_eval=False, fine_tune=False, accumulation_steps=13):
+    def __init__(self, lr, hidden_dim, linear_eval=False, fine_tune=False, accumulation_steps=5):
         super().__init__()
         self.lr = lr
         self.linear_eval = linear_eval
@@ -97,7 +97,7 @@ class SimCLR_eval(pl.LightningModule):
         self.scaler.scale(loss).backward(retain_graph=False)
 
         if (batch_idx + 1) % self.accumulation_steps == 0:
-            print("Going into accumulation \n")
+    #     print("Going into accumulation \n")
             self.scaler.step(self.optimizer)
             self.scaler.update()
             self.optimizer.zero_grad()
@@ -311,8 +311,8 @@ if __name__ == '__main__':
     train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
 
     # DataLoader for the training and validation sets
-    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
-    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True, num_workers=0, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=4, shuffle=False, num_workers=0, pin_memory=True)
 
     pl.seed_everything(42)  # For reproducibility
 
