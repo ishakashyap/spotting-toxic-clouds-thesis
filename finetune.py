@@ -97,6 +97,7 @@ class SimCLR_eval(pl.LightningModule):
         self.scaler.scale(loss).backward(retain_graph=False)
 
         if (batch_idx + 1) % self.accumulation_steps == 0:
+            print("Going into accumulation \n")
             self.scaler.step(self.optimizer)
             self.scaler.update()
             self.optimizer.zero_grad()
