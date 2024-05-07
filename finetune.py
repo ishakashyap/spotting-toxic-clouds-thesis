@@ -94,7 +94,7 @@ class SimCLR_eval(pl.LightningModule):
             loss = self.loss(logits, y)  # Compute loss normally without dividing by accumulation steps
 
         # Perform backward pass and scale loss under autocast
-        self.scaler.scale(loss).backward()
+        self.scaler.scale(loss).backward(retain_graph=True)
 
         # Update the optimizer and scale, then zero out gradients every step
         self.scaler.step(self.optimizer)
