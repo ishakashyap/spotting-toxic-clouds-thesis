@@ -53,17 +53,21 @@ class SimCLRVideoLinearEval(pl.LightningModule):
 
         self.fc = nn.Linear(224, 2)
 
-
         # Add a new classifier layer
         # self.classifier = nn.Linear(hidden_dim, num_classes)
         self.accuracy = torchmetrics.Accuracy(top_k=1, task='binary')
         self.loss = nn.CrossEntropyLoss()
 
     def forward(self, x):
-        # Extract features using the pre-trained model
-        features = self.model(x)
-        # Classify features using the new classifier layer
-        return self.fc(features)
+        # Extract features
+        x = self.model(x)
+
+        # Pass through the projection head
+        x = self.projection_head(x)
+
+        # Final classification layer
+        x = self.fc(x)
+        return x
 
     def training_step(self, batch, batch_idx):
         x, y = batch
