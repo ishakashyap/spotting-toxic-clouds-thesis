@@ -131,7 +131,7 @@ class SimCLR_eval(pl.LightningModule):
 
         return {'loss': loss, 'train_acc': acc, 'train_top5_acc': top5_acc}
     
-    def on_train_epoch_end(self):
+    # def on_train_epoch_end(self):
         avg_acc = self.accuracy.compute()
         avg_top5_acc = self.top5_accuracy.compute()
         self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
@@ -163,14 +163,14 @@ class SimCLR_eval(pl.LightningModule):
 
        return {'loss': loss, 'val_acc': acc, 'val_top5_acc': top5_acc}
     
-    def on_validation_epoch_end(self):
-        avg_acc = self.accuracy.compute()
-        avg_top5_acc = self.top5_accuracy.compute()
-        self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
-        self.log('avg_val_acc', avg_acc, sync_dist=True)
-        self.log('avg_val_top5_acc', avg_top5_acc, sync_dist=True)
-        self.accuracy.reset()
-        self.top5_accuracy.reset()
+    # def on_validation_epoch_end(self):
+    #     avg_acc = self.accuracy.compute()
+    #     avg_top5_acc = self.top5_accuracy.compute()
+    #     self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
+    #     self.log('avg_val_acc', avg_acc, sync_dist=True)
+    #     self.log('avg_val_top5_acc', avg_top5_acc, sync_dist=True)
+    #     self.accuracy.reset()
+    #     self.top5_accuracy.reset()
     
     def on_validation_end(self):
         overall_avg_accuracy = np.mean(self.epoch_accuracies)
