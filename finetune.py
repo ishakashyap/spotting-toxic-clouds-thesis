@@ -408,11 +408,24 @@ if __name__ == '__main__':
 
     pretrained_filename = 'SimCLR_test.pth' #os.path.join(CHECKPOINT_PATH, 'Full_SimCLR_test.ckpt')
     print(f'Found pretrained model at {pretrained_filename}, loading...')
+
     checkpoint = torch.load(pretrained_filename, map_location='cpu')
     adjusted_state_dict = {k: v for k, v in checkpoint.items() if 'projection_head' not in k}
+
+    new_state_dict = {}
+    for key, value in adjusted_state_dict.items():
+        new_key = key
+        # Rename keys: assuming the original model used 'fc' but the new model uses 'classifier'
+        if 'fc.weight' in key:
+            new_key = key.replace('fc.weight', 'classifier.2.weight')
+        elif 'fc.bias' in key:
+            new_key = key.replace('fc.bias', 'classifier.2.bias')
+
+        new_state_dict[new_key] = value
+
     # model = SimCLRVideoLinearEval(lr=1e-3, hidden_dim=224, weight_decay=5e-4, num_classes=2)
     model = SimCLR_eval(hidden_dim=224, lr=1e-3, fine_tune=False, linear_eval=True)
-    model.load_state_dict(adjusted_state_dict)
+    model.load_state_dict(new_state_dict)
 
     # Update to the correct class name and possibly adjust for any required initialization arguments
     # model_state_dict = checkpoint['state_dict']
