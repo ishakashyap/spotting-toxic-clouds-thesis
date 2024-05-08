@@ -354,7 +354,7 @@ class LabeledDataset(Dataset):
             frame = F.to_pil_image(frame)
             # if self.transform:
             #     frame = self.transform(frame)
-            # transformed_frames.append(frame)
+            transformed_frames.append(frame)
         video_tensor = torch.stack(transformed_frames)
         return video_tensor.permute(1, 0, 2, 3) 
 
