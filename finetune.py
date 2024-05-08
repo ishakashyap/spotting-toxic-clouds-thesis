@@ -127,13 +127,13 @@ class SimCLR_eval(pl.LightningModule):
 
 
         weights = R3D_18_Weights.DEFAULT
-        self.model = r3d_18(weights=weights)
+        model = r3d_18(weights=weights)
         # self.model = r3d_18(pretrained=True)  # Pretrained 3D ResNet
 
         if self.fine_tune:
-            self.model.train()
+            model.train()
         elif self.linear_eval:
-            self.model.eval()
+            model.eval()
         
         self.mlp = torch.nn.Sequential(
             torch.nn.Linear(512, 2) # only one linear layer on top
