@@ -125,26 +125,23 @@ class SimCLR_eval(pl.LightningModule):
         self.linear_eval = linear_eval
         self.fine_tune = fine_tune
 
-        weights = R3D_18_Weights.DEFAULT
-        self.model = r3d_18(weights=weights)
-        # self.model = r3d_18(pretrained=True)  # Pretrained 3D ResNet
-        self.model.fc = nn.Identity()  # Remove the final fully connected layer
-
-        # The MLP head for projection
-        feature_size = 512  # Known feature size for r3d_18 before the final layer
-        self.projection_head = nn.Sequential(
-            nn.Linear(feature_size, 4 * hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(4 * hidden_dim, hidden_dim),
-        )
-
-        self.fc = nn.Linear(hidden_dim, 2)
-        
-        # Ensure the base model is in training mode if we're fine-tuning
         if self.fine_tune:
             self.model.train()
         elif self.linear_eval:
-            self.model.eval()  # Only in linear_eval mode, we keep the base model in eval mode
+            self.model.eval()
+
+        weights = R3D_18_Weights.DEFAULT
+        self.model = r3d_18(weights=weights)
+        # self.model = r3d_18(pretrained=True)  # Pretrained 3D ResNet
+        self.mlp = torch.nn.Sequential(
+            torch.nn.Linear(512, 2) # only one linear layer on top
+       )
+
+        self.model = torch.nn.Sequential(
+            model, self.mlp
+       )
+
+        # self.fc = nn.Linear(hidden_dim, 2)
 
         # self.mlp = nn.Sequential(
         #     nn.Linear(512, 2),
@@ -162,11 +159,11 @@ class SimCLR_eval(pl.LightningModule):
         # Extract features
         x = self.model(x)
 
-        # Pass through the projection head
-        x = self.projection_head(x)
+        # # Pass through the projection head
+        # x = self.projection_head(x)
 
-        # Final classification layer
-        x = self.fc(x)
+        # # Final classification layer
+        # x = self.fc(x)
         return x
 
     def training_step(self, batch, batch_idx):
@@ -177,32 +174,32 @@ class SimCLR_eval(pl.LightningModule):
         x, y = batch
         y = adjust_labels(y)  # Make sure this function does not retain any graph
 
-        with autocast():
-            logits = self(x)  # Get model predictions
-            loss = self.loss(logits, y)  # Compute loss normally without dividing by accumulation steps
+        # with autocast():
+        logits = self.forward(x)  # Get model predictions
+        loss = self.loss(logits, y)  # Compute loss normally without dividing by accumulation steps
 
 
         # Perform backward pass and scale loss under autocast
-        self.scaler.scale(loss).backward()
-        # Update the optimizer and scale, then zero out gradients every step
-        # self.scaler.step(self.optimizer)
-        self.optimizer.zero_grad()
+        # self.scaler.scale(loss).backward()
+        # # Update the optimizer and scale, then zero out gradients every step
+        # # self.scaler.step(self.optimizer)
+        # self.optimizer.zero_grad()
         # self.scaler.update()
 
-        with torch.no_grad():
-            _, preds = torch.max(logits, dim=1)
-            acc = self.accuracy(preds, y)
-            top5_acc = self.top5_accuracy(preds, y)
+        # with torch.no_grad():
+        _, preds = torch.max(logits, dim=1)
+        acc = self.accuracy(preds, y)
+        top5_acc = self.top5_accuracy(preds, y)
 
-            # self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
-            self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
-            self.log('train_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+        # self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log('train_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
 
-            avg_acc = self.accuracy.update(preds, y)
-            avg_top5_acc = self.top5_accuracy.update(preds, y)
+        avg_acc = self.accuracy.update(preds, y)
+        avg_top5_acc = self.top5_accuracy.update(preds, y)
 
-            self.accuracy.reset()
-            self.top5_accuracy.reset()
+        self.accuracy.reset()
+        self.top5_accuracy.reset()
         #    self.log('Cross Entropy loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
 
     #    predicted = z.argmax(1)
@@ -232,23 +229,23 @@ class SimCLR_eval(pl.LightningModule):
         print(f'Overall Average Top-1 Accuracy across all epochs: {overall_avg_accuracy}')
 
     def validation_step(self, batch, batch_idx):
-       with torch.no_grad():
-            x, y = batch
-            y = adjust_labels(y)
-            logits = self(x)
-            loss = self.loss(logits, y)
-            _, preds = torch.max(logits, dim=1)
-            acc = self.accuracy(preds, y)
-            top5_acc = self.top5_accuracy(preds, y)
+    #    with torch.no_grad():
+        x, y = batch
+        y = adjust_labels(y)
+        logits = self(x)
+        loss = self.loss(logits, y)
+        _, preds = torch.max(logits, dim=1)
+        acc = self.accuracy(preds, y)
+        top5_acc = self.top5_accuracy(preds, y)
 
-            self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
-            self.log('val_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
-            self.log('val_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log('val_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log('val_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
 
-            avg_acc = self.accuracy.update(preds, y)
-            avg_top5_acc = self.top5_accuracy.update(preds, y)
+        avg_acc = self.accuracy.update(preds, y)
+        avg_top5_acc = self.top5_accuracy.update(preds, y)
 
-       return {'loss': loss, 'val_acc': acc, 'val_top5_acc': top5_acc}
+        return {'loss': loss, 'val_acc': acc, 'val_top5_acc': top5_acc}
     
     def on_validation_epoch_end(self):
         avg_acc = self.accuracy.compute()
@@ -272,7 +269,7 @@ class SimCLR_eval(pl.LightningModule):
         #     {'params': self.model.parameters(), 'lr': base_lr},
         #     {'params': self.classifier.parameters(), 'lr': classifier_lr},
         # ], lr=self.lr, momentum=0.9)
-        self.optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        self.optimizer = torch.optim.Adam(self.mlp.parameters(), lr=self.lr)
         return self.optimizer
 
 class LabeledDataset(Dataset):
