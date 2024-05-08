@@ -119,7 +119,7 @@ class SimCLRVideoLinearEval(pl.LightningModule):
 
 
 class SimCLR_eval(pl.LightningModule):
-    def __init__(self, lr, hidden_dim, linear_eval=False, fine_tune=False):
+    def __init__(self, lr, hidden_dim, linear_eval=False, fine_tune=False, num_classes=2):
         super().__init__()
         self.lr = lr
         self.linear_eval = linear_eval
@@ -127,21 +127,20 @@ class SimCLR_eval(pl.LightningModule):
 
 
         weights = R3D_18_Weights.DEFAULT
-        model = r3d_18(weights=weights)
+        self.model = r3d_18(weights=weights)
         # self.model = r3d_18(pretrained=True)  # Pretrained 3D ResNet
 
         if self.fine_tune:
-            model.train()
+            self.model.train()
         elif self.linear_eval:
-            model.eval()
+            self.model.eval()
         
-        self.mlp = torch.nn.Sequential(
-            torch.nn.Linear(512, 2) # only one linear layer on top
-       )
-
-        self.model = torch.nn.Sequential(
-            model, self.mlp
-       )
+        feature_size = self.model.fc.in_features  # Get the feature size from the pre-trained model
+        self.classifier = nn.Sequential(
+            nn.Linear(feature_size, hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(hidden_dim, num_classes)
+        )
 
         # self.fc = nn.Linear(hidden_dim, 2)
 
@@ -159,14 +158,14 @@ class SimCLR_eval(pl.LightningModule):
 
     def forward(self, x):
         # Extract features
-        x = self.model(x)
+        features = self.model(x)
 
         # # Pass through the projection head
         # x = self.projection_head(x)
 
         # # Final classification layer
         # x = self.fc(x)
-        return x
+        return self.classifier(features)
 
     def training_step(self, batch, batch_idx):
     #    x, y = batch
@@ -410,9 +409,10 @@ if __name__ == '__main__':
     pretrained_filename = 'SimCLR_test.pth' #os.path.join(CHECKPOINT_PATH, 'Full_SimCLR_test.ckpt')
     print(f'Found pretrained model at {pretrained_filename}, loading...')
     checkpoint = torch.load(pretrained_filename, map_location='cpu')
+    adjusted_state_dict = {k: v for k, v in checkpoint.items() if 'projection_head' not in k}
     # model = SimCLRVideoLinearEval(lr=1e-3, hidden_dim=224, weight_decay=5e-4, num_classes=2)
     model = SimCLR_eval(hidden_dim=224, lr=1e-3, fine_tune=False, linear_eval=True)
-    model.load_state_dict(checkpoint)
+    model.load_state_dict(adjusted_state_dict)
 
     # Update to the correct class name and possibly adjust for any required initialization arguments
     # model_state_dict = checkpoint['state_dict']
