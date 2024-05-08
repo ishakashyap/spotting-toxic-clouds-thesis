@@ -119,12 +119,11 @@ class SimCLRVideoLinearEval(pl.LightningModule):
 
 
 class SimCLR_eval(pl.LightningModule):
-    def __init__(self, lr, hidden_dim, linear_eval=False, fine_tune=False, accumulation_steps=5):
+    def __init__(self, lr, hidden_dim, linear_eval=False, fine_tune=False):
         super().__init__()
         self.lr = lr
         self.linear_eval = linear_eval
         self.fine_tune = fine_tune
-        self.accumulation_steps = accumulation_steps
 
         weights = R3D_18_Weights.DEFAULT
         self.model = r3d_18(weights=weights)
@@ -412,7 +411,8 @@ if __name__ == '__main__':
     pretrained_filename = 'SimCLR_test.pth' #os.path.join(CHECKPOINT_PATH, 'Full_SimCLR_test.ckpt')
     print(f'Found pretrained model at {pretrained_filename}, loading...')
     checkpoint = torch.load(pretrained_filename, map_location='cpu')
-    model = SimCLRVideoLinearEval(lr=1e-3, hidden_dim=224, weight_decay=5e-4, num_classes=2)
+    # model = SimCLRVideoLinearEval(lr=1e-3, hidden_dim=224, weight_decay=5e-4, num_classes=2)
+    model = SimCLR_eval(hidden_dim=224, lr=1e-3, fine_tune=False, linear_eval=True)
     model.load_state_dict(checkpoint)
 
     # Update to the correct class name and possibly adjust for any required initialization arguments
