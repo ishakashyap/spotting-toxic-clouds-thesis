@@ -54,7 +54,8 @@ class SimCLRVideo(pl.LightningModule):
             nn.Linear(4 * hidden_dim, hidden_dim),
         )
 
-        self.fc = nn.Linear(hidden_dim, num_classes)
+        # self.fc = nn.Linear(224, 2)
+        # TODO: RUN AGAIN WITH NEW PARAMS
 
     # def configure_callbacks(self):
     #     checkpoint = ModelCheckpoint(monitor="train_loss")
@@ -68,7 +69,7 @@ class SimCLRVideo(pl.LightningModule):
         x = self.projection_head(x)
 
         # Final classification layer
-        x = self.fc(x)
+        # x = self.fc(x)
         return x
 
     # def forward(self, x):
