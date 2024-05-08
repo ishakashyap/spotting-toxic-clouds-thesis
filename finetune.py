@@ -425,7 +425,7 @@ if __name__ == '__main__':
 
     # model = SimCLRVideoLinearEval(lr=1e-3, hidden_dim=224, weight_decay=5e-4, num_classes=2)
     model = SimCLR_eval(hidden_dim=224, lr=1e-3, fine_tune=False, linear_eval=True)
-    model.load_state_dict(new_state_dict)
+    model.load_state_dict(new_state_dict, strict=False)
 
     # Update to the correct class name and possibly adjust for any required initialization arguments
     # model_state_dict = checkpoint['state_dict']
