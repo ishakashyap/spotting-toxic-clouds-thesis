@@ -20,8 +20,12 @@ from torchvision.models.video import r3d_18, R3D_18_Weights
 from PIL import Image
 from sklearn.metrics import accuracy_score
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
+from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, GradientAccumulationScheduler
 from train import SimCLRVideo
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
 
 def adjust_labels(y):
     y = y.detach()
@@ -173,36 +177,40 @@ class SimCLR_eval(pl.LightningModule):
     #    y = adjust_labels(y)
     #    logits = self(x)
     #    loss = self.loss(logits, y)
-        x, y = batch
-        y = adjust_labels(y)  # Make sure this function does not retain any graph
+        try:
+            x, y = batch
+            y = adjust_labels(y)  # Make sure this function does not retain any graph
 
-        # with autocast():
-        logits = self.forward(x)  # Get model predictions
-        loss = self.loss(logits, y)  # Compute loss normally without dividing by accumulation steps
+            with autocast():
+                logits = self.forward(x)  # Get model predictions
+                loss = self.loss(logits, y)  # Compute loss normally without dividing by accumulation steps
 
 
-        # Perform backward pass and scale loss under autocast
-        # self.scaler.scale(loss).backward()
-        # # Update the optimizer and scale, then zero out gradients every step
-        # # self.scaler.step(self.optimizer)
-        # self.optimizer.zero_grad()
-        # self.scaler.update()
+            # Perform backward pass and scale loss under autocast
+            self.scaler.scale(loss).backward()
+            # Update the optimizer and scale, then zero out gradients every step
+            self.scaler.step(self.optimizer)
+            self.optimizer.zero_grad()
+            self.scaler.update()
 
-        # with torch.no_grad():
-        _, preds = torch.max(logits, dim=1)
-        acc = self.accuracy(preds, y)
-        top5_acc = self.top5_accuracy(preds, y)
+            # with torch.no_grad():
+            _, preds = torch.max(logits, dim=1)
+            acc = self.accuracy(preds, y)
+            top5_acc = self.top5_accuracy(preds, y)
 
-        # self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
-        self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
-        self.log('train_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+            # self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+            self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+            self.log('train_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
 
-        avg_acc = self.accuracy.update(preds, y)
-        avg_top5_acc = self.top5_accuracy.update(preds, y)
+            avg_acc = self.accuracy.update(preds, y)
+            avg_top5_acc = self.top5_accuracy.update(preds, y)
 
-        self.accuracy.reset()
-        self.top5_accuracy.reset()
-        #    self.log('Cross Entropy loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
+            self.accuracy.reset()
+            self.top5_accuracy.reset()
+        #    self.log('Cross Entropy loss',
+        #  loss, on_step=True, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
+        except Exception as e:
+            logging.error('Error in training_step: ', e)
 
     #    predicted = z.argmax(1)
     #    acc = (predicted == y).sum().item() / y.size(0)ho
@@ -217,50 +225,52 @@ class SimCLR_eval(pl.LightningModule):
 
         return {'loss': loss, 'train_acc': acc, 'train_top5_acc': top5_acc}
     
-    def on_train_epoch_end(self):
-        avg_acc = self.accuracy.compute()
-        avg_top5_acc = self.top5_accuracy.compute()
-        self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
-        self.log('avg_train_acc', avg_acc, sync_dist=True)
-        self.log('avg_train_top5_acc', avg_top5_acc, sync_dist=True)
-        self.accuracy.reset()
-        self.top5_accuracy.reset()
+    # def on_train_epoch_end(self):
+    #     avg_acc = self.accuracy.compute()
+    #     avg_top5_acc = self.top5_accuracy.compute()
+    #     self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
+    #     self.log('avg_train_acc', avg_acc, sync_dist=True)
+    #     self.log('avg_train_top5_acc', avg_top5_acc, sync_dist=True)
+    #     self.accuracy.reset()
+    #     self.top5_accuracy.reset()
     
-    def on_train_end(self):
-        overall_avg_accuracy = np.mean(self.epoch_accuracies)
-        print(f'Overall Average Top-1 Accuracy across all epochs: {overall_avg_accuracy}')
+    # def on_train_end(self):
+    #     overall_avg_accuracy = np.mean(self.epoch_accuracies)
+    #     print(f'Overall Average Top-1 Accuracy across all epochs: {overall_avg_accuracy}')
 
     def validation_step(self, batch, batch_idx):
     #    with torch.no_grad():
-        x, y = batch
-        y = adjust_labels(y)
-        logits = self(x)
-        loss = self.loss(logits, y)
-        _, preds = torch.max(logits, dim=1)
-        acc = self.accuracy(preds, y)
-        top5_acc = self.top5_accuracy(preds, y)
+        try:
+            x, y = batch
+            y = adjust_labels(y)
+            logits = self(x)
+            loss = self.loss(logits, y)
+            _, preds = torch.max(logits, dim=1)
+            acc = self.accuracy(preds, y)
+            top5_acc = self.top5_accuracy(preds, y)
 
-        self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
-        self.log('val_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
-        self.log('val_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+            self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+            self.log('val_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+            self.log('val_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
 
-        avg_acc = self.accuracy.update(preds, y)
-        avg_top5_acc = self.top5_accuracy.update(preds, y)
-
+            avg_acc = self.accuracy.update(preds, y)
+            avg_top5_acc = self.top5_accuracy.update(preds, y)
+        except Exception as e:
+            logging.error('Error in validation step: ', e)
         return {'loss': loss, 'val_acc': acc, 'val_top5_acc': top5_acc}
     
-    def on_validation_epoch_end(self):
-        avg_acc = self.accuracy.compute()
-        avg_top5_acc = self.top5_accuracy.compute()
-        self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
-        self.log('avg_val_acc', avg_acc, sync_dist=True)
-        self.log('avg_val_top5_acc', avg_top5_acc, sync_dist=True)
-        self.accuracy.reset()
-        self.top5_accuracy.reset()
+    # def on_validation_epoch_end(self):
+    #     avg_acc = self.accuracy.compute()
+    #     avg_top5_acc = self.top5_accuracy.compute()
+    #     self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
+    #     self.log('avg_val_acc', avg_acc, sync_dist=True)
+    #     self.log('avg_val_top5_acc', avg_top5_acc, sync_dist=True)
+    #     self.accuracy.reset()
+    #     self.top5_accuracy.reset()
     
-    def on_validation_end(self):
-        overall_avg_accuracy = np.mean(self.epoch_accuracies)
-        print(f'Overall Average Top-1 Validation Accuracy across all epochs: {overall_avg_accuracy}')
+    # def on_validation_end(self):
+    #     overall_avg_accuracy = np.mean(self.epoch_accuracies)
+    #     print(f'Overall Average Top-1 Validation Accuracy across all epochs: {overall_avg_accuracy}')
 
     def configure_optimizers(self):
     # Different learning rate for fine-tuning pre-trained layers
@@ -342,9 +352,9 @@ class LabeledDataset(Dataset):
         transformed_frames = []
         for frame in video:
             frame = F.to_pil_image(frame)
-            if self.transform:
-                frame = self.transform(frame)
-            transformed_frames.append(frame)
+            # if self.transform:
+            #     frame = self.transform(frame)
+            # transformed_frames.append(frame)
         video_tensor = torch.stack(transformed_frames)
         return video_tensor.permute(1, 0, 2, 3) 
 
@@ -380,7 +390,7 @@ if __name__ == '__main__':
     torch.set_float32_matmul_precision('medium')
     torch.backends.cuda.matmul.allow_tf32 = True
 
-    # TODO: Remove transformations
+    # Currenly commented out transformation in dataset loader
     train_transforms = Compose([
         Resize(224), 
         RandomApply([GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.5),
@@ -434,20 +444,6 @@ if __name__ == '__main__':
     # sim_model = SimCLRVideo.load_from_checkpoint(pretrained_filename)
     # backbone_model = sim_model.model
     # model = SimCLR_eval(lr=1e-3, model=None, fine_tune=True, linear_eval=False, accumulation_steps=20)
-    # self.model = r3d_18(pretrained=True)  # Pretrained 3D ResNet
-    # model.fc = nn.Identity()
-    # hidden_dim = 224 
-    # feature_size = 512  # Known feature size for r3d_18 before the final layer
-
-    # projection_head = nn.Sequential(
-    #     nn.Linear(feature_size, 4 * hidden_dim),
-    #     nn.ReLU(inplace=True),
-    #     nn.Linear(4 * hidden_dim, hidden_dim),
-    # )
-
-    # model.projection_head = projection_head
-
-    # model.fc = nn.Linear(hidden_dim, 2)
     
     # checkpoint = torch.load(pretrained_filename, map_location='cpu')
     # # print(checkpoint.keys())
