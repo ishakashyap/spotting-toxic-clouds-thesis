@@ -181,17 +181,19 @@ class SimCLR_eval(pl.LightningModule):
             x, y = batch
             y = adjust_labels(y)  # Make sure this function does not retain any graph
 
-            with autocast():
+            with torch.no_grad():
                 logits = self.forward(x)  # Get model predictions
-                loss = self.loss(logits, y)  # Compute loss normally without dividing by accumulation steps
+            
+            loss = self.loss(logits, y)  # Compute loss normally without dividing by accumulation steps
 
             self.optimizer.zero_grad()
             # Perform backward pass and scale loss under autocast
-            self.scaler.scale(loss).backward()
+            loss.backward()
+            self.optimizer.step()
             # Update the optimizer and scale, then zero out gradients every step
-            self.scaler.step(self.optimizer)
-            self.optimizer.zero_grad()
-            self.scaler.update()
+            # self.scaler.step(self.optimizer)
+            # self.optimizer.zero_grad()
+            # self.scaler.update()
 
             # with torch.no_grad():
             _, preds = torch.max(logits, dim=1)
