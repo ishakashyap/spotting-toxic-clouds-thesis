@@ -188,6 +188,7 @@ class SimCLR_eval(pl.LightningModule):
 
             self.optimizer.zero_grad()
             # Perform backward pass and scale loss under autocast
+            loss.requires_grad = True
             loss.backward()
             self.optimizer.step()
             # Update the optimizer and scale, then zero out gradients every step
