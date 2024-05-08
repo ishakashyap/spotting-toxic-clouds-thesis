@@ -270,7 +270,7 @@ class SimCLR_eval(pl.LightningModule):
         #     {'params': self.model.parameters(), 'lr': base_lr},
         #     {'params': self.classifier.parameters(), 'lr': classifier_lr},
         # ], lr=self.lr, momentum=0.9)
-        self.optimizer = torch.optim.Adam(self.mlp.parameters(), lr=self.lr)
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         return self.optimizer
 
 class LabeledDataset(Dataset):
