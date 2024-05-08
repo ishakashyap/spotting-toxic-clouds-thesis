@@ -128,6 +128,7 @@ class SimCLR_eval(pl.LightningModule):
 
         weights = R3D_18_Weights.DEFAULT
         self.model = r3d_18(weights=weights)
+        self.model.fc = nn.Identity()
         # self.model = r3d_18(pretrained=True)  # Pretrained 3D ResNet
 
         if self.fine_tune:
@@ -135,11 +136,11 @@ class SimCLR_eval(pl.LightningModule):
         elif self.linear_eval:
             self.model.eval()
         
-        feature_size = self.model.fc.in_features  # Get the feature size from the pre-trained model
+        feature_size = 512  # Get the feature size from the pre-trained model
         self.classifier = nn.Sequential(
-            nn.Linear(feature_size, hidden_dim),
+            nn.Linear(feature_size, 4 * hidden_dim),
             nn.ReLU(inplace=True),
-            nn.Linear(hidden_dim, num_classes)
+            nn.Linear(4 * hidden_dim, hidden_dim),
         )
 
         # self.fc = nn.Linear(hidden_dim, 2)
