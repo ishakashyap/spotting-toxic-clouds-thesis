@@ -18,7 +18,7 @@ from torchvision.models.video import r3d_18, R3D_18_Weights
 from PIL import Image
 from sklearn.metrics import accuracy_score
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
+from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, EarlyStopping
 
 class ProjectionHead(nn.Module):
     def __init__(self, input_dim=512, hidden_dim=512, output_dim=128):
@@ -331,12 +331,20 @@ if __name__ == '__main__':
             Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
         
-        train_folder = "./train"
+        train_folder = "./train_full"
         # val_folder = "./val_labeled_test"
         label_folder = "./metadata_02242020.json"
         # if args.model == 'simclr':
         dataset = SimCLRDataset(train_folder, transform=train_transforms)
         train_loader = DataLoader(dataset, batch_size=8, shuffle=True, num_workers=7, persistent_workers=True)
+
+        early_stop = EarlyStopping(
+            monitor='train_loss',
+            min_delta=0.0,
+            patience=3,
+            verbose=True,
+            mode='min'
+        )
 
         # val_dataset = ValDataset(val_folder, label_folder, transform=train_transforms)
         # val_loader = DataLoader(val_dataset, batch_size=2, shuffle=False, num_workers=7)
@@ -368,16 +376,16 @@ if __name__ == '__main__':
         # else:
         model = SimCLRVideo(hidden_dim=224, lr=1e-3, temperature=0.07, weight_decay=1e-4, max_epochs=50)
         # optimizer = optim.Adam(model.parameters(), lr=1e-2)
-        trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, 'SimCLR_test.pth'),
+        trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, 'SimCLR_full_data.pth'),
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
         # devices=1 if torch.cuda.is_available() else None,  # Adjust as per your setup
         max_epochs=50,
         callbacks=[
             ModelCheckpoint(save_weights_only=True, mode='min', monitor='train_loss'),
-            LearningRateMonitor('epoch')], log_every_n_steps=2)
+            LearningRateMonitor('epoch'), early_stop], log_every_n_steps=2)
         
         trainer.fit(model, train_loader)
-        torch.save(model.state_dict(), 'SimCLR_test.pth')
+        torch.save(model.state_dict(), 'SimCLR_full_data.pth')
         # trainer.save_checkpoint(os.path.join(CHECKPOINT_PATH, 'Full_SimCLR_test.ckpt'))
         # Update the checkpoint loading logic if needed
         # model = SimCLRVideo.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
