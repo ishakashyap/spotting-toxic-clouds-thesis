@@ -28,10 +28,18 @@ logging.basicConfig(level=logging.INFO)
 
 
 def adjust_labels(y):
+    # Detach y to ensure no gradients are backpropagated through the label adjustment
     y = y.detach()
-    # Map label 16 to 0 and label 23 to 1
-    y_adjusted = torch.where(y == 16, torch.zeros_like(y), torch.ones_like(y))
-    y_adjusted = y_adjusted.detach()
+
+    # Initialize all labels to a default value (e.g., -1 for filtering or 0 if using binary classification)
+    y_adjusted = torch.full_like(y, -1)
+
+    # Mapping specific labels
+    y_adjusted[y == 47] = 1  # Gold standard positive
+    y_adjusted[y == 32] = 0  # Gold standard negative
+    y_adjusted[y == 23] = 1  # Strong positive
+    y_adjusted[y == 16] = 0  # Strong negative
+
     return y_adjusted
 
 class SimCLRVideoLinearEval(pl.LightningModule):
@@ -415,8 +423,8 @@ if __name__ == '__main__':
     train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
 
     # DataLoader for the training and validation sets
-    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
-    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True, num_workers=9, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=9, pin_memory=True)
 
     pl.seed_everything(42)  # For reproducibility
 
