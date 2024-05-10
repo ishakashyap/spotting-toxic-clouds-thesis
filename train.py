@@ -385,6 +385,7 @@ if __name__ == '__main__':
             LearningRateMonitor('epoch'), early_stop], log_every_n_steps=2)
         
         trainer.fit(model, train_loader)
+
         torch.save(model.state_dict(), 'SimCLR_full_data.pth')
         # trainer.save_checkpoint(os.path.join(CHECKPOINT_PATH, 'Full_SimCLR_test.ckpt'))
         # Update the checkpoint loading logic if needed
