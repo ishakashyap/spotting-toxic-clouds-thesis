@@ -73,7 +73,7 @@ class SimCLR_eval(pl.LightningModule):
             self.optimizer.zero_grad()
 
             # Perform backward pass and scale loss under autocast
-            # loss.requires_grad = True
+            loss.requires_grad = True
             loss.backward()
             self.optimizer.step()
 
@@ -97,18 +97,18 @@ class SimCLR_eval(pl.LightningModule):
 
         return {'loss': loss, 'train_acc': acc, 'train_top5_acc': top5_acc}
     
-    def on_train_epoch_end(self):
-        avg_acc = self.accuracy.compute()
-        avg_top5_acc = self.top5_accuracy.compute()
-        self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
-        self.log('avg_train_acc', avg_acc, sync_dist=True)
-        self.log('avg_train_top5_acc', avg_top5_acc, sync_dist=True)
-        self.accuracy.reset()
-        self.top5_accuracy.reset()
+    # def on_train_epoch_end(self):
+    #     avg_acc = self.accuracy.compute()
+    #     avg_top5_acc = self.top5_accuracy.compute()
+    #     self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
+    #     self.log('avg_train_acc', avg_acc, sync_dist=True)
+    #     self.log('avg_train_top5_acc', avg_top5_acc, sync_dist=True)
+    #     self.accuracy.reset()
+    #     self.top5_accuracy.reset()
     
-    def on_train_end(self):
-        overall_avg_accuracy = np.mean(self.epoch_accuracies)
-        print(f'Overall Average Top-1 Accuracy across all epochs: {overall_avg_accuracy}')
+    # def on_train_end(self):
+    #     overall_avg_accuracy = np.mean(self.epoch_accuracies)
+    #     print(f'Overall Average Top-1 Accuracy across all epochs: {overall_avg_accuracy}')
 
     def validation_step(self, batch, batch_idx):
     #    with torch.no_grad():
@@ -131,18 +131,18 @@ class SimCLR_eval(pl.LightningModule):
             logging.error('Error in validation step: ', e)
         return {'loss': loss, 'val_acc': acc, 'val_top5_acc': top5_acc}
     
-    def on_validation_epoch_end(self):
-        avg_acc = self.accuracy.compute()
-        avg_top5_acc = self.top5_accuracy.compute()
-        self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
-        self.log('avg_val_acc', avg_acc, sync_dist=True)
-        self.log('avg_val_top5_acc', avg_top5_acc, sync_dist=True)
-        self.accuracy.reset()
-        self.top5_accuracy.reset()
+    # def on_validation_epoch_end(self):
+    #     avg_acc = self.accuracy.compute()
+    #     avg_top5_acc = self.top5_accuracy.compute()
+    #     self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
+    #     self.log('avg_val_acc', avg_acc, sync_dist=True)
+    #     self.log('avg_val_top5_acc', avg_top5_acc, sync_dist=True)
+    #     self.accuracy.reset()
+    #     self.top5_accuracy.reset()
     
-    def on_validation_end(self):
-        overall_avg_accuracy = np.mean(self.epoch_accuracies)
-        print(f'Overall Average Top-1 Validation Accuracy across all epochs: {overall_avg_accuracy}')
+    # def on_validation_end(self):
+    #     overall_avg_accuracy = np.mean(self.epoch_accuracies)
+    #     print(f'Overall Average Top-1 Validation Accuracy across all epochs: {overall_avg_accuracy}')
 
     def configure_optimizers(self):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
