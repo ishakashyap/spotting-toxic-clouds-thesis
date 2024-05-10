@@ -70,12 +70,12 @@ class SimCLR_eval(pl.LightningModule):
             
             loss = self.loss(logits, y)
 
-            # self.optimizer.zero_grad()
+            self.optimizer.zero_grad()
 
-            # # Perform backward pass and scale loss under autocast
+            # Perform backward pass and scale loss under autocast
             # loss.requires_grad = True
-            # loss.backward()
-            # self.optimizer.step()
+            loss.backward()
+            self.optimizer.step()
 
 
             # with torch.no_grad():
