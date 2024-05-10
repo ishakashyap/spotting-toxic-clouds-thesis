@@ -144,6 +144,15 @@ class SimCLR_eval(pl.LightningModule):
     #     overall_avg_accuracy = np.mean(self.epoch_accuracies)
     #     print(f'Overall Average Top-1 Validation Accuracy across all epochs: {overall_avg_accuracy}')
 
+    def on_epoch_end(self):
+        # Get the average accuracy from the current epoch for both training and validation
+        train_acc = self.trainer.callback_metrics.get('train_acc')
+        val_acc = self.trainer.callback_metrics.get('val_acc')
+        
+        # Create or open the log file and append the current epoch's accuracies
+        with open('epoch_accuracy_log.txt', 'a') as f:
+            f.write(f'Epoch {self.current_epoch}: Train Acc: {train_acc:.4f}, Val Acc: {val_acc:.4f}\n')
+
     def configure_optimizers(self):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         return self.optimizer
@@ -259,7 +268,7 @@ if __name__ == '__main__':
         Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
     
-    folder = "./val_labeled_test"
+    folder = "./finetune_small"
     label_folder = "./metadata_02242020.json"
 
     full_dataset = LabeledDataset(folder, label_folder, transform=train_transforms)
