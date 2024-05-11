@@ -207,17 +207,17 @@ class SimCLR_eval(pl.LightningModule):
             # with torch.no_grad():
             _, preds = torch.max(logits, dim=1)
             acc = self.accuracy(preds, y)
-            top5_acc = self.top5_accuracy(preds, y)
+            # top5_acc = self.top5_accuracy(preds, y)
 
-            # self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+            self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
             self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
-            self.log('train_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+            # self.log('train_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
 
             avg_acc = self.accuracy.update(preds, y)
-            avg_top5_acc = self.top5_accuracy.update(preds, y)
+            # avg_top5_acc = self.top5_accuracy.update(preds, y)
 
             self.accuracy.reset()
-            self.top5_accuracy.reset()
+            # self.top5_accuracy.reset()
         #    self.log('Cross Entropy loss',
         #  loss, on_step=True, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
         except Exception as e:
@@ -234,7 +234,7 @@ class SimCLR_eval(pl.LightningModule):
     #    with open(log_path, 'a') as f:
     #         f.write(f"Batch {batch_idx}: Loss: {loss.item()}, Acc: {acc*100:.2f}%, Labels: {y.tolist()}\n")
 
-        return {'loss': loss, 'train_acc': acc, 'train_top5_acc': top5_acc}
+        return {'loss': loss, 'train_acc': acc}
     
     # def on_train_epoch_end(self):
     #     avg_acc = self.accuracy.compute()
@@ -258,17 +258,17 @@ class SimCLR_eval(pl.LightningModule):
             loss = self.loss(logits, y)
             _, preds = torch.max(logits, dim=1)
             acc = self.accuracy(preds, y)
-            top5_acc = self.top5_accuracy(preds, y)
+            # top5_acc = self.top5_accuracy(preds, y)
 
             self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
             self.log('val_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
-            self.log('val_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
+            # self.log('val_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
 
             avg_acc = self.accuracy.update(preds, y)
-            avg_top5_acc = self.top5_accuracy.update(preds, y)
+            # avg_top5_acc = self.top5_accuracy.update(preds, y)
         except Exception as e:
             logging.error('Error in validation step: ', e)
-        return {'loss': loss, 'val_acc': acc, 'val_top5_acc': top5_acc}
+        return {'loss': loss, 'val_acc': acc}
     
     # def on_validation_epoch_end(self):
     #     avg_acc = self.accuracy.compute()
@@ -402,7 +402,7 @@ if __name__ == '__main__':
     torch.backends.cuda.matmul.allow_tf32 = True
 
     early_stop = EarlyStopping(
-            monitor='train_acc',
+            monitor='train_loss',
             min_delta=0.0,
             patience=3,
             verbose=True,
