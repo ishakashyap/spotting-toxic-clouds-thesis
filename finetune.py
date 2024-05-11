@@ -493,4 +493,4 @@ if __name__ == '__main__':
     )
 
     # Start the training and validation process
-    trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=val_loader, optimizer=model.optimizer)
+    trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=val_loader, optimizers=model.optimizer)
