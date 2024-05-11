@@ -489,8 +489,7 @@ if __name__ == '__main__':
     trainer = pl.Trainer(
         max_epochs=50,
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
-        callbacks=[ModelCheckpoint(dirpath='./checkpoints/', monitor='train_acc', mode='max'), early_stop], log_every_n_steps=2,
-        save_weights_only=True, monitor='train_acc'
+        callbacks=[ModelCheckpoint(dirpath='./checkpoints/', monitor='train_acc', mode='max'), early_stop], log_every_n_steps=2
     )
 
     # Start the training and validation process
