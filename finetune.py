@@ -292,8 +292,8 @@ class SimCLR_eval(pl.LightningModule):
         #     {'params': self.model.parameters(), 'lr': base_lr},
         #     {'params': self.classifier.parameters(), 'lr': classifier_lr},
         # ], lr=self.lr, momentum=0.9)
-        # self.optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
-        return None
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        return self.optimizer
 
 class LabeledDataset(Dataset):
     def __init__(self, folder_path, labels_json_path, transform=None):
@@ -465,8 +465,6 @@ if __name__ == '__main__':
     # Load the optimizer state dictionary if available
     if 'optimizer_state_dict' in checkpoint:
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-
-    model.optimizer = optimizer
     # Update to the correct class name and possibly adjust for any required initialization arguments
     # model_state_dict = checkpoint['state_dict']
     # optimizer_state_dict = checkpoint.get('optimizer_state', None)
@@ -493,4 +491,4 @@ if __name__ == '__main__':
     )
 
     # Start the training and validation process
-    trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=val_loader, optimizers=model.optimizer)
+    trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=val_loader)
