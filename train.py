@@ -336,7 +336,7 @@ if __name__ == '__main__':
         label_folder = "./metadata_02242020.json"
         # if args.model == 'simclr':
         dataset = SimCLRDataset(train_folder, transform=train_transforms)
-        train_loader = DataLoader(dataset, batch_size=8, shuffle=True, num_workers=7, persistent_workers=True)
+        train_loader = DataLoader(dataset, batch_size=16, shuffle=True, num_workers=7, persistent_workers=True)
 
         early_stop = EarlyStopping(
             monitor='train_loss',
@@ -385,8 +385,12 @@ if __name__ == '__main__':
             LearningRateMonitor('epoch'), early_stop], log_every_n_steps=2)
         
         trainer.fit(model, train_loader)
+        optimizer = trainer.optimizers[0]
 
-        torch.save(model.state_dict(), 'SimCLR_full_data.pth')
+        torch.save({
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+        }, 'SimCLR_full_data.pth')
         # trainer.save_checkpoint(os.path.join(CHECKPOINT_PATH, 'Full_SimCLR_test.ckpt'))
         # Update the checkpoint loading logic if needed
         # model = SimCLRVideo.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
