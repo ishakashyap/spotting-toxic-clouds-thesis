@@ -336,7 +336,7 @@ if __name__ == '__main__':
         label_folder = "./metadata_02242020.json"
         # if args.model == 'simclr':
         dataset = SimCLRDataset(train_folder, transform=train_transforms)
-        train_loader = DataLoader(dataset, batch_size=16, shuffle=True, num_workers=7, persistent_workers=True)
+        train_loader = DataLoader(dataset, batch_size=8, shuffle=True, num_workers=7, persistent_workers=True)
 
         early_stop = EarlyStopping(
             monitor='train_loss',
