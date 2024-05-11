@@ -20,7 +20,7 @@ from torchvision.models.video import r3d_18, R3D_18_Weights
 from PIL import Image
 from sklearn.metrics import accuracy_score
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, GradientAccumulationScheduler
+from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, GradientAccumulationScheduler, EarlyStopping
 from train import SimCLRVideo
 import logging
 
@@ -292,8 +292,8 @@ class SimCLR_eval(pl.LightningModule):
         #     {'params': self.model.parameters(), 'lr': base_lr},
         #     {'params': self.classifier.parameters(), 'lr': classifier_lr},
         # ], lr=self.lr, momentum=0.9)
-        self.optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
-        return self.optimizer
+        # self.optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        return None
 
 class LabeledDataset(Dataset):
     def __init__(self, folder_path, labels_json_path, transform=None):
@@ -401,6 +401,14 @@ if __name__ == '__main__':
     torch.set_float32_matmul_precision('medium')
     torch.backends.cuda.matmul.allow_tf32 = True
 
+    early_stop = EarlyStopping(
+            monitor='train_acc',
+            min_delta=0.0,
+            patience=3,
+            verbose=True,
+            mode='min'
+        )
+
     # Currenly commented out transformation in dataset loader
     train_transforms = Compose([
         Resize(224), 
@@ -428,27 +436,37 @@ if __name__ == '__main__':
 
     pl.seed_everything(42)  # For reproducibility
 
-    pretrained_filename = 'SimCLR_test.pth' #os.path.join(CHECKPOINT_PATH, 'Full_SimCLR_test.ckpt')
+    pretrained_filename = 'SimCLR_full_data.pth' #os.path.join(CHECKPOINT_PATH, 'Full_SimCLR_test.ckpt')
     print(f'Found pretrained model at {pretrained_filename}, loading...')
 
     checkpoint = torch.load(pretrained_filename, map_location='cpu')
-    adjusted_state_dict = {k: v for k, v in checkpoint.items() if 'projection_head' not in k}
-
-    new_state_dict = {}
-    for key, value in adjusted_state_dict.items():
+    
+    # Prepare the new model state dictionary with adjusted keys
+    adjusted_state_dict = {}
+    for key, value in checkpoint['model_state_dict'].items():  # Ensure 'model_state_dict' is the correct key in your checkpoint
         new_key = key
-        # Rename keys: assuming the original model used 'fc' but the new model uses 'classifier'
+        if 'projection_head' in key:
+            continue  # Skip projection head weights
         if 'fc.weight' in key:
             new_key = key.replace('fc.weight', 'classifier.2.weight')
         elif 'fc.bias' in key:
             new_key = key.replace('fc.bias', 'classifier.2.bias')
+        adjusted_state_dict[new_key] = value
 
-        new_state_dict[new_key] = value
-
-    # model = SimCLRVideoLinearEval(lr=1e-3, hidden_dim=224, weight_decay=5e-4, num_classes=2)
+    # Initialize your model
     model = SimCLR_eval(hidden_dim=224, lr=1e-3, fine_tune=False, linear_eval=True)
-    model.load_state_dict(new_state_dict, strict=False)
 
+    # Load the adjusted state dictionary into your model
+    model.load_state_dict(adjusted_state_dict, strict=False)
+
+    # Prepare your optimizer
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+
+    # Load the optimizer state dictionary if available
+    if 'optimizer_state_dict' in checkpoint:
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+
+    model.optimizer = optimizer
     # Update to the correct class name and possibly adjust for any required initialization arguments
     # model_state_dict = checkpoint['state_dict']
     # optimizer_state_dict = checkpoint.get('optimizer_state', None)
@@ -471,7 +489,8 @@ if __name__ == '__main__':
     trainer = pl.Trainer(
         max_epochs=50,
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
-        callbacks=[ModelCheckpoint(dirpath='./checkpoints/', monitor='train_acc', mode='max')], log_every_n_steps=2
+        callbacks=[ModelCheckpoint(dirpath='./checkpoints/', monitor='train_acc', mode='max'), early_stop], log_every_n_steps=2,
+        save_weights_only=True, monitor='train_acc'
     )
 
     # Start the training and validation process
