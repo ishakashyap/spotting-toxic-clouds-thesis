@@ -193,13 +193,15 @@ def main():
 
     logger.info("Building data done with {} images loaded.".format(len(train_dataset)))
 
+    weights = R3D_18_Weights.DEFAULT
+    model = r3d_18(weights=weights) 
     # build model
-    model = resnet_models.__dict__[args.arch](
-        normalize=True,
-        hidden_mlp=args.hidden_mlp,
-        output_dim=args.feat_dim,
-        nmb_prototypes=args.nmb_prototypes,
-    )
+    # model = resnet_models.__dict__[args.arch](
+    #     normalize=True,
+    #     hidden_mlp=args.hidden_mlp,
+    #     output_dim=args.feat_dim,
+    #     nmb_prototypes=args.nmb_prototypes,
+    # )
     # synchronize batch norm layers
     # if args.sync_bn == "pytorch":
     model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
