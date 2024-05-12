@@ -20,7 +20,7 @@ import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 import torch.optim
 import apex
-from apex.parallel.LARC import LARC
+# from apex.parallel.LARC import LARC
 from torch.utils.data import DataLoader, random_split, Dataset
 from torchvision import transforms
 import torch.optim as optim
@@ -34,10 +34,10 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
 from utils import (
-    bool_flag,
-    initialize_exp,
-    restart_from_checkpoint,
-    fix_random_seeds,
+    # bool_flag,
+    # initialize_exp,
+    # restart_from_checkpoint,
+    # fix_random_seeds,
     AverageMeter,
 )
 import resnet50 as resnet_models
@@ -119,8 +119,8 @@ parser.add_argument("--workers", default=10, type=int,
                     help="number of data loading workers")
 parser.add_argument("--checkpoint_freq", type=int, default=25,
                     help="Save the model periodically")
-parser.add_argument("--use_fp16", type=bool_flag, default=False,
-                    help="whether to train with mixed precision or not")
+# parser.add_argument("--use_fp16", type=bool_flag, default=False,
+#                     help="whether to train with mixed precision or not")
 parser.add_argument("--sync_bn", type=str, default="pytorch", help="synchronize bn")
 parser.add_argument("--syncbn_process_group_size", type=int, default=8, help=""" see
                     https://github.com/NVIDIA/apex/blob/master/apex/parallel/__init__.py#L58-L67""")
@@ -170,8 +170,8 @@ def main():
     global args
     args = parser.parse_args()
     # init_distributed_mode(args)
-    fix_random_seeds(args.seed)
-    logger, training_stats = initialize_exp(args, "epoch", "loss")
+    # fix_random_seeds(args.seed)
+    # logger, training_stats = initialize_exp(args, "epoch", "loss")
     train_folder = "./train"
 
     train_transforms = Compose([
@@ -201,13 +201,13 @@ def main():
         nmb_prototypes=args.nmb_prototypes,
     )
     # synchronize batch norm layers
-    if args.sync_bn == "pytorch":
-        model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
-    elif args.sync_bn == "apex":
-        # with apex syncbn we sync bn per group because it speeds up computation
-        # compared to global syncbn
-        process_group = apex.parallel.create_syncbn_process_group(args.syncbn_process_group_size)
-        model = apex.parallel.convert_syncbn_model(model, process_group=process_group)
+    # if args.sync_bn == "pytorch":
+    model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+    # elif args.sync_bn == "apex":
+    #     # with apex syncbn we sync bn per group because it speeds up computation
+    #     # compared to global syncbn
+    #     process_group = apex.parallel.create_syncbn_process_group(args.syncbn_process_group_size)
+    #     model = apex.parallel.convert_syncbn_model(model, process_group=process_group)
     # copy model to GPU
     model = model.cuda()
     if args.rank == 0:
@@ -221,7 +221,7 @@ def main():
         momentum=0.9,
         weight_decay=args.wd,
     )
-    optimizer = LARC(optimizer=optimizer, trust_coefficient=0.001, clip=False)
+    # optimizer = LARC(optimizer=optimizer, trust_coefficient=0.001, clip=False)
     warmup_lr_schedule = np.linspace(args.start_warmup, args.base_lr, len(train_loader) * args.warmup_epochs)
     iters = np.arange(len(train_loader) * (args.epochs - args.warmup_epochs))
     cosine_lr_schedule = np.array([args.final_lr + 0.5 * (args.base_lr - args.final_lr) * (1 + \
@@ -279,7 +279,7 @@ def main():
 
         # train the network
         scores, queue = train(train_loader, model, optimizer, epoch, lr_schedule, queue)
-        training_stats.update(scores)
+        # training_stats.update(scores)
 
         # save checkpoints
         if args.rank == 0:
