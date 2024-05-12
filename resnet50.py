@@ -11,9 +11,9 @@ import torch.nn as nn
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
     """3x3 convolution with padding"""
-    return nn.Conv2d(
-        in_planes,
-        out_planes,
+    return nn.Conv3d(
+        in_channels=3,
+        out_channels=16,
         kernel_size=3,
         stride=stride,
         padding=dilation,
@@ -23,9 +23,9 @@ def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
     )
 
 
-def conv1x1(in_planes, out_planes, stride=1):
+def conv1x1(in_channels, out_channels, stride=1):
     """1x1 convolution"""
-    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
+    return nn.Conv3d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False)
 
 
 class BasicBlock(nn.Module):
@@ -172,12 +172,12 @@ class ResNet(nn.Module):
 
         # change padding 3 -> 2 compared to original torchvision code because added a padding layer
         num_out_filters = width_per_group * widen
-        self.conv1 = nn.Conv2d(
+        self.conv1 = nn.Conv3d(
             3, num_out_filters, kernel_size=7, stride=2, padding=2, bias=False
         )
         self.bn1 = norm_layer(num_out_filters)
         self.relu = nn.ReLU(inplace=True)
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        self.maxpool = nn.MaxPool3d(kernel_size=3, stride=2, padding=1)
         self.layer1 = self._make_layer(block, num_out_filters, layers[0])
         num_out_filters *= 2
         self.layer2 = self._make_layer(
@@ -191,7 +191,7 @@ class ResNet(nn.Module):
         self.layer4 = self._make_layer(
             block, num_out_filters, layers[3], stride=2, dilate=replace_stride_with_dilation[2]
         )
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
 
         # normalize output features
         self.l2norm = normalize
@@ -217,9 +217,9 @@ class ResNet(nn.Module):
             self.prototypes = nn.Linear(output_dim, nmb_prototypes, bias=False)
 
         for m in self.modules():
-            if isinstance(m, nn.Conv2d):
+            if isinstance(m, nn.Conv3d):
                 nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
-            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+            elif isinstance(m, (nn.BatchNorm3d, nn.GroupNorm)):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 
