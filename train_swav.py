@@ -344,7 +344,7 @@ def train(train_loader, model, optimizer, epoch, lr_schedule, queue):
     use_the_queue = False
 
     end = time.time()
-    for it, inputs in enumerate(train_loader):
+    for it, (view1, view2) in enumerate(train_loader):
         # measure data loading time
         data_time.update(time.time() - end)
 
@@ -353,16 +353,19 @@ def train(train_loader, model, optimizer, epoch, lr_schedule, queue):
         for param_group in optimizer.param_groups:
             param_group["lr"] = lr_schedule[iteration]
 
+        # prepare inputs
+        inputs = torch.cat([view1, view2], dim=0).cuda()  # Assuming using CUDA
+
         # normalize the prototypes
         with torch.no_grad():
             w = model.prototypes.weight.data.clone()
-            w = nn.functional.normalize(w, dim=1, p=2)
+            w = F.normalize(w, dim=1, p=2)
             model.prototypes.weight.copy_(w)
 
         # ============ multi-res forward passes ... ============
         embedding, output = model(inputs)
         embedding = embedding.detach()
-        bs = inputs[0].size(0)
+        bs = view1.size(0)
 
         # ============ swav loss ... ============
         loss = 0
@@ -408,10 +411,10 @@ def train(train_loader, model, optimizer, epoch, lr_schedule, queue):
         optimizer.step()
 
         # ============ misc ... ============
-        losses.update(loss.item(), inputs[0].size(0))
+        losses.update(loss.item(), view1.size(0) * 2)  # Updated for full batch size
         batch_time.update(time.time() - end)
         end = time.time()
-        if args.rank ==0 and it % 50 == 0:
+        if args.rank == 0 and it % 50 == 0:
             logger.info(
                 "Epoch: [{0}][{1}]\t"
                 "Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t"
@@ -423,11 +426,10 @@ def train(train_loader, model, optimizer, epoch, lr_schedule, queue):
                     batch_time=batch_time,
                     data_time=data_time,
                     loss=losses,
-                    lr=optimizer.optim.param_groups[0]["lr"],
+                    lr=optimizer.param_groups[0]["lr"],
                 )
             )
     return (epoch, losses.avg), queue
-
 
 @torch.no_grad()
 def distributed_sinkhorn(out):
