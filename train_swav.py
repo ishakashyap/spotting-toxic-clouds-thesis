@@ -119,7 +119,7 @@ parser.add_argument("--workers", default=10, type=int,
                     help="number of data loading workers")
 parser.add_argument("--checkpoint_freq", type=int, default=25,
                     help="Save the model periodically")
-parser.add_argument("--use_fp16", type=bool_flag, default=False,
+parser.add_argument("--use_fp16", type=bool, default=False,
                     help="whether to train with mixed precision or not")
 parser.add_argument("--sync_bn", type=str, default="pytorch", help="synchronize bn")
 parser.add_argument("--syncbn_process_group_size", type=int, default=8, help=""" see
