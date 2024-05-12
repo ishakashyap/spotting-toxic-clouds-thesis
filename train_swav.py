@@ -164,7 +164,7 @@ class SimCLRDataset(Dataset):
         except Exception as e:
             print(f"Error transforming video: {e}")
 
-        return video_tensor.permute(1, 0, 2, 3)  # Reshape to (C, T, H, W) for model
+        return video_tensor #.permute(1, 0, 2, 3)  # Reshape to (C, T, H, W) for model
 
 def main():
     global args
