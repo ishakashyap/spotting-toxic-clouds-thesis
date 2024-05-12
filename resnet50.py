@@ -173,7 +173,7 @@ class ResNet(nn.Module):
         # change padding 3 -> 2 compared to original torchvision code because added a padding layer
         num_out_filters = width_per_group * widen
         self.conv1 = nn.Conv3d(
-            3, 16, kernel_size=7, stride=2, padding=2, bias=False
+            3, 64, kernel_size=7, stride=2, padding=2, bias=False
         )
         self.bn1 = norm_layer(num_out_filters)
         self.relu = nn.ReLU(inplace=True)
