@@ -55,7 +55,7 @@ class R3D18WithPrototypes(nn.Module):
         self.to_prototypes = nn.Linear(feature_dim, num_prototypes)
         
         # Define prototype layer as an actual linear layer
-        self.prototypes_layer = nn.Linear(num_prototypes, num_prototypes, bias=False)
+        self.prototypes = nn.Linear(num_prototypes, num_prototypes, bias=False)
         
         # Classifier that takes the number of prototypes as input features
         self.classifier = nn.Linear(num_prototypes, num_classes)
@@ -66,7 +66,7 @@ class R3D18WithPrototypes(nn.Module):
         # Prepare features for prototype comparison
         transformed_features = self.to_prototypes(features)
         # Pass features through prototype layer
-        prototypes_output = self.prototypes_layer(transformed_features)
+        prototypes_output = self.prototypes(transformed_features)
         # Use softmax for normalization/similarity
         similarities = F.softmax(prototypes_output, dim=1)
         # Classification based on similarity to prototypes
