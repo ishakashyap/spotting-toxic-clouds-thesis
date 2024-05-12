@@ -42,6 +42,35 @@ from utils import (
 )
 import resnet50 as resnet_models
 
+class R3D18WithPrototypes(nn.Module):
+    def __init__(self, num_classes, num_prototypes):
+        super(R3D18WithPrototypes, self).__init__()
+        # Load the pretrained R3D-18 model
+        weights = R3D_18_Weights.DEFAULT
+        self.base_model = r3d_18(weights=weights)
+        self.base_model.fc = nn.Identity()  # Remove the final fully connected layer
+
+        # Define the dimension of the features before the prototype layer
+        feature_dim = 512  # Known dimension from the R3D-18 model architecture
+        self.to_prototypes = nn.Linear(feature_dim, num_prototypes)
+        # Prototype layer, randomly initialized
+        self.prototypes = nn.Parameter(torch.randn(num_prototypes, num_prototypes))
+        # Classifier that takes the number of prototypes as input features
+        self.classifier = nn.Linear(num_prototypes, num_classes)
+
+    def forward(self, x):
+        # Extract features with the base model
+        features = self.base_model(x)
+        # Prepare features for prototype comparison
+        features = self.to_prototypes(features)
+        # Calculate similarities (or distances) to prototypes
+        distances = torch.cdist(features.unsqueeze(0), self.prototypes.unsqueeze(0), p=2).squeeze(0)
+        # Convert distances to similarities
+        similarities = torch.softmax(-distances, dim=1)
+        # Classification based on similarity to prototypes
+        out = self.classifier(similarities)
+        return out
+
 logger = getLogger()
 
 parser = argparse.ArgumentParser(description="Implementation of SwAV")
@@ -193,8 +222,7 @@ def main():
 
     logger.info("Building data done with {} images loaded.".format(len(train_dataset)))
 
-    weights = R3D_18_Weights.DEFAULT
-    model = r3d_18(weights=weights) 
+    model = R3D18WithPrototypes(num_classes=2, num_prototypes=1000)
     # build model
     # model = resnet_models.__dict__[args.arch](
     #     normalize=True,
