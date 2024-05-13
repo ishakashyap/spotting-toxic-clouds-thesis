@@ -137,8 +137,8 @@ parser.add_argument("--world_size", default=-1, type=int, help="""
                     should not be passed as argument""")
 parser.add_argument("--rank", default=0, type=int, help="""rank of this process:
                     it is set automatically and should not be passed as argument""")
-# parser.add_argument("--local_rank", default=0, type=int,
-#                     help="this argument is not used and should be ignored")
+parser.add_argument("--local-rank", default=0, type=int,
+                    help="this argument is not used and should be ignored")
 
 #########################
 #### other parameters ###
@@ -204,7 +204,7 @@ def main():
     # fix_random_seeds(args.seed)
     # logger, training_stats = initialize_exp(args, "epoch", "loss")
     train_folder = "./train"
-    os.environ['LOCAL_RANK'] = str(0)
+    # os.environ['LOCAL_RANK'] = str(0)
 
     train_transforms = Compose([
             Resize(224), 
