@@ -73,7 +73,7 @@ class R3D18WithPrototypes(nn.Module):
         out = self.classifier(similarities)
         return transformed_features, out
 
-logger = getLogger()
+logger = getLogger(__name__)
 
 parser = argparse.ArgumentParser(description="Implementation of SwAV")
 
