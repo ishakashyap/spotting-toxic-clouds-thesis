@@ -446,22 +446,22 @@ if __name__ == '__main__':
     checkpoint = torch.load(pretrained_filename, map_location='cpu')
     
     # Prepare the new model state dictionary with adjusted keys
-    # adjusted_state_dict = {}
-    # for key, value in checkpoint['model_state_dict'].items():  # Ensure 'model_state_dict' is the correct key in your checkpoint
-    #     new_key = key
-    #     if 'projection_head' in key:
-    #         continue  # Skip projection head weights
-    #     if 'fc.weight' in key:
-    #         new_key = key.replace('fc.weight', 'classifier.2.weight')
-    #     elif 'fc.bias' in key:
-    #         new_key = key.replace('fc.bias', 'classifier.2.bias')
-    #     adjusted_state_dict[new_key] = value
+    adjusted_state_dict = {}
+    for key, value in checkpoint['model_state_dict'].items():  # Ensure 'model_state_dict' is the correct key in your checkpoint
+        new_key = key
+        if 'projection_head' in key:
+            continue  # Skip projection head weights
+        if 'fc.weight' in key:
+            new_key = key.replace('fc.weight', 'classifier.2.weight')
+        elif 'fc.bias' in key:
+            new_key = key.replace('fc.bias', 'classifier.2.bias')
+        adjusted_state_dict[new_key] = value
 
     # Initialize your model
     model = SimCLR_eval(hidden_dim=224, lr=1e-3, fine_tune=False, linear_eval=True)
 
     # Load the adjusted state dictionary into your model
-    model.load_state_dict(checkpoint['model_state_dict'])
+    model.load_state_dict(adjusted_state_dict)
 
     # Prepare your optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
