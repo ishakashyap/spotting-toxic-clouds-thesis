@@ -346,7 +346,7 @@ def train(train_loader, model, optimizer, epoch, lr_schedule, queue):
 
     end = time.time()
     for it, (view1, view2) in enumerate(train_loader):
-        print(it)
+        # print(it)
         # measure data loading time
         data_time.update(time.time() - end)
 
