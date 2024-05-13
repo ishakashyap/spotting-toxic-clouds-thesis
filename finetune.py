@@ -149,10 +149,10 @@ class SimCLR_eval(pl.LightningModule):
             self.model.eval()
         
         feature_size = 512  # Get the feature size from the pre-trained model
-        self.projection_head = nn.Sequential(
-            nn.Linear(feature_size, 4 * hidden_dim),
+        self.classifier = nn.Sequential(
+            nn.Linear(feature_size, hidden_dim),
             nn.ReLU(inplace=True),
-            nn.Linear(4 * hidden_dim, hidden_dim)
+            nn.Linear(hidden_dim, num_classes)
         )
 
         # self.fc = nn.Linear(hidden_dim, 2)
@@ -178,7 +178,7 @@ class SimCLR_eval(pl.LightningModule):
         features = self.model(x)
 
         # # Pass through the projection head
-        x = self.projection_head(x)
+        # x = self.projection_head(x)
 
         # # Final classification layer
         # x = self.fc(x)
