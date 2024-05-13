@@ -392,7 +392,7 @@ def parse_args():
 
 def fix_state_dict(state_dict):
     # Remove the 'model.' prefix from each key
-    new_state_dict = {key.replace("model.", ""): value for key, value in state_dict.items()}
+    new_state_dict = {key.replace("model.", "model.0."): value for key, value in state_dict.items()}
     return new_state_dict
 
 if __name__ == '__main__':
@@ -457,6 +457,8 @@ if __name__ == '__main__':
             new_key = key.replace('fc.bias', 'classifier.2.bias')
         adjusted_state_dict[new_key] = value
 
+    state_dict = fix_state_dict(adjusted_state_dict)
+    print(state_dict)
     # Initialize your model
     model = SimCLR_eval(hidden_dim=224, lr=1e-3, fine_tune=False, linear_eval=True)
 
