@@ -71,7 +71,7 @@ class R3D18WithPrototypes(nn.Module):
         similarities = F.softmax(prototypes_output, dim=1)
         # Classification based on similarity to prototypes
         out = self.classifier(similarities)
-        return out
+        return transformed_features, out
 
 logger = getLogger()
 
