@@ -204,6 +204,7 @@ def main():
     # fix_random_seeds(args.seed)
     # logger, training_stats = initialize_exp(args, "epoch", "loss")
     train_folder = "./train"
+    os.environ['LOCAL_RANK'] = str(0)
 
     train_transforms = Compose([
             Resize(224), 
