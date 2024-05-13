@@ -359,7 +359,7 @@ def train(train_loader, model, optimizer, epoch, lr_schedule, queue):
         # normalize the prototypes
         with torch.no_grad():
             w = model.prototypes.weight.data.clone()
-            w = F.normalize(w, dim=1, p=2)
+            w = nn.functional.normalize(w, dim=1, p=2)
             model.prototypes.weight.copy_(w)
 
         # ============ multi-res forward passes ... ============
