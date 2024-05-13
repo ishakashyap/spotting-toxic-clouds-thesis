@@ -439,6 +439,7 @@ def distributed_sinkhorn(out):
 
     # make the matrix sums to 1
     sum_Q = torch.sum(Q)
+    dist.init_process_group("gloo", rank=args.rank, world_size=args.world_size)
     dist.all_reduce(sum_Q)
     Q /= sum_Q
 
