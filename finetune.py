@@ -461,7 +461,7 @@ if __name__ == '__main__':
     model = SimCLR_eval(hidden_dim=224, lr=1e-3, fine_tune=False, linear_eval=True)
 
     # Load the adjusted state dictionary into your model
-    model.load_state_dict(checkpoint['model_state_dict'])
+    model.load_state_dict(checkpoint['model_state_dict'], strict=False)
 
     # Prepare your optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
