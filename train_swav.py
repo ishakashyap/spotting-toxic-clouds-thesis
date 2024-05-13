@@ -346,6 +346,7 @@ def train(train_loader, model, optimizer, epoch, lr_schedule, queue):
 
     end = time.time()
     for it, (view1, view2) in enumerate(train_loader):
+        print(it)
         # measure data loading time
         data_time.update(time.time() - end)
 
@@ -415,7 +416,7 @@ def train(train_loader, model, optimizer, epoch, lr_schedule, queue):
         losses.update(loss.item(), view1.size(0) * 2)  # Updated for full batch size
         batch_time.update(time.time() - end)
         end = time.time()
-        if args.rank == 0 and it % 50 == 0:
+        if args.rank == 0 and it % 2 == 0:
             logger.info(
                 "Epoch: [{0}][{1}]\t"
                 "Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t"
