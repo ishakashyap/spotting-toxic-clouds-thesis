@@ -150,9 +150,9 @@ class SimCLR_eval(pl.LightningModule):
         
         feature_size = 512  # Get the feature size from the pre-trained model
         self.projection_head = nn.Sequential(
-            nn.Linear(feature_size, hidden_dim),
+            nn.Linear(feature_size, 4 * hidden_dim),
             nn.ReLU(inplace=True),
-            nn.Linear(hidden_dim, num_classes),
+            nn.Linear(4 * hidden_dim, hidden_dim)
         )
 
         # self.fc = nn.Linear(hidden_dim, 2)
