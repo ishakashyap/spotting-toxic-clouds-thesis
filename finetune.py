@@ -426,7 +426,7 @@ if __name__ == '__main__':
         Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
     
-    folder = "./videos"
+    folder = "./val_labeled"
     label_folder = "./metadata_02242020.json"
 
     full_dataset = LabeledDataset(folder, label_folder, transform=train_transforms)
@@ -440,7 +440,7 @@ if __name__ == '__main__':
 
     pl.seed_everything(42)  # For reproducibility
 
-    pretrained_filename = 'SimCLR_full_data.pth' #os.path.join(CHECKPOINT_PATH, 'Full_SimCLR_test.ckpt')
+    pretrained_filename = 'SimCLR_newdata.pth' #os.path.join(CHECKPOINT_PATH, 'Full_SimCLR_test.ckpt')
     print(f'Found pretrained model at {pretrained_filename}, loading...')
 
     checkpoint = torch.load(pretrained_filename, map_location='cpu')
