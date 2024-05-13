@@ -20,19 +20,6 @@ from sklearn.metrics import accuracy_score
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, EarlyStopping
 
-class ProjectionHead(nn.Module):
-    def __init__(self, input_dim=512, hidden_dim=512, output_dim=128):
-        super(ProjectionHead, self).__init__()
-        self.layers = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, output_dim)
-        )
-
-    def forward(self, x):
-        return self.layers(x)
-
-
 class SimCLRVideo(pl.LightningModule):
 
     def __init__(self, hidden_dim, lr, temperature, weight_decay, max_epochs=50, num_classes=2):
@@ -57,10 +44,6 @@ class SimCLRVideo(pl.LightningModule):
         # self.fc = nn.Linear(224, 2)
         # TODO: RUN AGAIN WITH NEW PARAMS
 
-    # def configure_callbacks(self):
-    #     checkpoint = ModelCheckpoint(monitor="train_loss")
-    #     return [checkpoint]
-
     def forward(self, x):
         # Extract features
         x = self.model(x)
@@ -72,13 +55,6 @@ class SimCLRVideo(pl.LightningModule):
         # x = self.fc(x)
         return x
 
-    # def forward(self, x):
-    #     # Forward pass through the base model and projection head
-    #     features = self.model(x)
-    #     projections = self.projection_head(features)
-    #     # TODO: ADD FULLY CONNECTED LAYER TO LOAD MODEL x = self.fc(x)
-
-    #     return projections
 
     def configure_optimizers(self):
         optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
@@ -107,110 +83,13 @@ class SimCLRVideo(pl.LightningModule):
         view1, view2 = batch  # Unpack the batched pairs of views
 
         # Concatenate the views along the batch dimension to form a larger batch
-        # This is useful if you are comparing each view1 with its corresponding view2
         views = torch.cat((view1, view2), dim=0)
 
         projections = self.forward(views)
         loss = self.info_nce_loss(projections, mode='train')
         return loss
-    # def validation_step(self, batch, batch_idx):
-    #     views, _ = batch  # Assuming the second part of the batch is labels or something else not used here
+
     
-    #     # If views is not already a tensor, concatenate it. Otherwise, use it directly.
-    #     if isinstance(views, (list, tuple)):
-    #         views = torch.cat(views, dim=0)
-        
-    #     projections = self.forward(views)
-    #     self.info_nce_loss(projections, mode='val')
-    
-class ModifiedR3D(nn.Module):
-    def __init__(self):
-        super(ModifiedR3D, self).__init__()
-        # self.weights = R3D_18_Weights.DEFAULT
-        # self.model = r3d_18(weights=self.weights).to(device).eval()
-        self.model = r3d_18(pretrained=False, progress=True)
-        self.model.fc = nn.Identity()  # Remove the final fully connected layer
-        self.projection_head = ProjectionHead(input_dim=512, hidden_dim=512, output_dim=128)
-
-    def forward(self, x):
-        features = self.model(x)
-        projections = self.projection_head(features)
-        return projections
-
-class ValDataset(Dataset):
-    def __init__(self, folder_path, labels_json_path, transform=None):
-        self.folder_path = folder_path
-        self.transform = transform
-        
-        # Load video filenames
-        self.video_files = os.listdir(folder_path)
-        
-        # Load labels from JSON file
-        self.labels = self._load_labels(labels_json_path)
-        self.video_files = self.validate_videos_and_labels()
-
-    def _load_labels(self, labels_json_path):
-        with open(labels_json_path, 'r') as f:
-            labels_json = json.load(f)
-        # Append the .mp4 extension to the filenames
-        labels = {item['file_name'] + '.mp4': item['label_state_admin'] 
-                    for item in labels_json 
-                    if item['label_state_admin'] is not None}
-        return labels
-    
-    def validate_videos_and_labels(self):
-        # Keep only videos for which we have a non-None label and can be loaded
-        valid_videos = []
-        for video_file in os.listdir(self.folder_path):
-            if video_file in self.labels:  # Checks if video has a non-None label
-                video_path = os.path.join(self.folder_path, video_file)
-                try:
-                    video, _, _ = read_video(video_path, pts_unit='sec')
-                    if video.nelement() > 0:  # Checks if video is loaded properly
-                        valid_videos.append(video_file)
-                except Exception as e:
-                    print(f"Error loading video {video_file}: {e}")
-        return valid_videos
-
-    def __len__(self):
-        return len(self.video_files)
-
-    def __getitem__(self, idx):
-        video_file = self.video_files[idx]
-        video_path = os.path.join(self.folder_path, video_file)
-        
-        # Load the video
-        video, _, _ = read_video(video_path, pts_unit='sec')
-
-        if video.nelement() == 0:  # or any other condition indicating failure
-            # Handle error: log, raise an exception, or return a default value
-            print(f"Failed to load video: {video_path}")
-            return None, None
-    
-        video = video.permute(0, 3, 1, 2)  # Convert to (T, C, H, W)
-        
-        # Apply transformation to get a single view of the videos
-        view = self.transform_video(video)
-        
-        # Get the label for the current video, default to None if not found
-        label = self.labels.get(video_file, None)
-
-        if label is None:
-            print(f"Failed to load label: {video_path}")
-            return None, None
-        
-        return view, label
-
-    def transform_video(self, video):
-        transformed_frames = []
-        for frame in video:
-            frame = F.to_pil_image(frame)
-            if self.transform:
-                frame = self.transform(frame)
-            transformed_frames.append(frame)
-        video_tensor = torch.stack(transformed_frames)
-        return video_tensor.permute(1, 0, 2, 3) 
-
 class SimCLRDataset(Dataset):
     def __init__(self, folder_path, transform=None):
         self.folder_path = folder_path
@@ -249,40 +128,6 @@ class SimCLRDataset(Dataset):
 
         return video_tensor.permute(1, 0, 2, 3)  # Reshape to (C, T, H, W) for model
 
-def validate(model, val_loader, device):
-    model.eval()  # Set the model to evaluation mode
-    all_preds = []
-    all_labels = []
-    with torch.no_grad():  # Disable gradient computation
-        for inputs, labels in val_loader:
-            if inputs.nelement() == 0 or labels.nelement() == 0:
-                print("Encountered an empty inputs or labels.")
-                continue  
-            inputs = inputs.to(device)
-            outputs = model(inputs)
-            _, preds = torch.max(outputs, 1)  # Get the predictions
-            
-            all_preds.extend(preds.cpu().numpy())
-            all_labels.extend(labels.numpy())
-    if not all_preds or not all_labels:  # Check if lists are empty
-        print("No predictions or labels were collected.")
-        return float('nan')
-    accuracy = accuracy_score(all_labels, all_preds)
-    model.train()  # Set the model back to training mode
-    return accuracy
-
-def nt_xent_loss(z_i, z_j, temperature=0.5):
-    """
-    Calculate the normalized temperature-scaled cross entropy loss.
-    Assumes z_i and z_j are normalized embeddings of shape (batch_size, feature_dim).
-    """
-    cos_sim = torch.matmul(z_i, z_j.T) / temperature
-    # Assuming z_i and z_j are L2-normalized, cos_sim computes the cosine similarity
-    labels = torch.arange(0, z_i.size(0)).to(z_i.device)
-    loss_fct = nn.CrossEntropyLoss()
-    loss = loss_fct(cos_sim, labels)
-    return loss
-
 def parse_args():
     parser = argparse.ArgumentParser(description='Video Classification')
     parser.add_argument('--mode', type=str, default='train', help='train/test')
@@ -293,7 +138,7 @@ def parse_args():
     parser.add_argument('--wd', type=float, default=5e-4, help='weight decay')
     parser.add_argument('--log', type=str, help='log directory')
     # parser.add_argument('--ckpt', type=str, help='checkpoint path')
-    parser.add_argument('--epochs', type=int, default=150, help='number of total epochs to run')
+    parser.add_argument('--epochs', type=int, default=50, help='number of total epochs to run')
     parser.add_argument('--start-epoch', type=int, default=1, help='manual epoch number (useful on restarts)')
     parser.add_argument('--bs', type=int, default=8, help='mini-batch size')
     parser.add_argument('--workers', type=int, default=2, help='number of data loading workers')
@@ -311,13 +156,6 @@ if __name__ == '__main__':
     os.makedirs(CHECKPOINT_PATH, exist_ok=True)
     torch.set_float32_matmul_precision('medium')
 
-    # if args.model == 'r3d':
-    #     # weights = R3D_18_Weights.DEFAULT
-    #     # model = r3d_18(weights=weights).to(device).eval()
-    #     # model = ModifiedR3D().to(device)
-    #     model = SimCLRVideo(hidden_dim=224, lr=1e-3, temperature=0.07, weight_decay=1e-4, max_epochs=50).to(device)
-    #     optimizer = optim.Adam(model.parameters(), lr=1e-2)
-
     if args.mode == 'train':
         train_transforms = Compose([
             Resize(224), 
@@ -332,9 +170,7 @@ if __name__ == '__main__':
         ])
         
         train_folder = "./train_full"
-        # val_folder = "./val_labeled_test"
         label_folder = "./metadata_02242020.json"
-        # if args.model == 'simclr':
         dataset = SimCLRDataset(train_folder, transform=train_transforms)
         train_loader = DataLoader(dataset, batch_size=8, shuffle=True, num_workers=7, persistent_workers=True)
 
@@ -346,9 +182,6 @@ if __name__ == '__main__':
             mode='min'
         )
 
-        # val_dataset = ValDataset(val_folder, label_folder, transform=train_transforms)
-        # val_loader = DataLoader(val_dataset, batch_size=2, shuffle=False, num_workers=7)
-
         pl.seed_everything(42)  # For reproducibility
 
         # pretrained_filename = './checkpoints/Full_SimCLR_test.ckpt/lightning_logs/version_1/checkpoints/epoch=18-step=5700.ckpt' #os.path.join(CHECKPOINT_PATH, 'SimCLR.ckpt')
@@ -356,21 +189,7 @@ if __name__ == '__main__':
         #     print(f'Found pretrained model at {pretrained_filename}, loading...')
         #     # Update to the correct class name and possibly adjust for any required initialization arguments
         #     model = SimCLRVideo.load_from_checkpoint(pretrained_filename)
-
-        # if os.path.isfile(pretrained_filename):
-        #     print(f'Found pretrained model at {pretrained_filename}, loading...')
-        #     # Update to the correct class name and possibly adjust for any required initialization arguments
-        #     model = SimCLRVideo.load_from_checkpoint(pretrained_filename)
         #     # optimizer = optim.Adam(model.parameters(), lr=1e-2)
-
-        #     trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, 'SimCLR.ckpt'),
-        #     accelerator="gpu" if torch.cuda.is_available() else "cpu",
-        #     # devices=1 if torch.cuda.is_available() else None,  # Adjust as per your setup
-        #     max_epochs=50,
-        #     callbacks=[
-        #         ModelCheckpoint(save_weights_only=True, mode='min', monitor='train_loss'),
-        #         LearningRateMonitor('epoch')], log_every_n_steps=2)
-        # else:
 
         # Update to the correct class name and pass necessary initialization arguments
         # else:
@@ -391,30 +210,5 @@ if __name__ == '__main__':
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
         }, 'SimCLR_full_data.pth')
-        # trainer.save_checkpoint(os.path.join(CHECKPOINT_PATH, 'Full_SimCLR_test.ckpt'))
-        # Update the checkpoint loading logic if needed
-        # model = SimCLRVideo.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
-        # for epoch in range(args.epochs):
-        #     for batch_idx, (view1, view2) in enumerate(train_loader):
-        #         view1, view2 = view1.to(device), view2.to(device)
-        #         repr1, repr2 = model(view1), model(view2)
-                
-        #         loss = nt_xent_loss(repr1, repr2, temperature=0.5)
-                
-        #         optimizer.zero_grad()
-        #         loss.backward()
-        #         optimizer.step()
-                
-        #         if batch_idx % args.pf == 0:
-        #             print(f"Epoch: {epoch}, Batch: {batch_idx}, Loss: {loss.item()}")
-                    
-        #     # val_accuracy = validate(model, val_loader, device)
-        #     # print(f'Epoch: {epoch}, Validation Accuracy: {val_accuracy}')
-
-        # # Save the model state
-        # torch.save(model.state_dict(), './model_state_dict.pth')
         print('Training complete')
-
-    # TODO: Figure out checkpoint, train on bigger batch of data, figure out why larger batch size doesn't work, hyperparameter tuning
-    # TODO: Add finetuning
