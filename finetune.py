@@ -140,7 +140,7 @@ class SimCLR_eval(pl.LightningModule):
 
         weights = R3D_18_Weights.DEFAULT
         self.model = r3d_18(weights=weights)
-        # self.model.fc = nn.Identity()
+        self.model.fc = nn.Identity()
         # self.model = r3d_18(pretrained=True)  # Pretrained 3D ResNet
 
         if self.fine_tune:
@@ -149,21 +149,21 @@ class SimCLR_eval(pl.LightningModule):
             self.model.eval()
         
         feature_size = 512  # Get the feature size from the pre-trained model
-        # self.classifier = nn.Sequential(
-        #     nn.Linear(feature_size, hidden_dim),
-        #     nn.ReLU(inplace=True),
-        #     nn.Linear(hidden_dim, num_classes),
-        # )
+        self.projection_head = nn.Sequential(
+            nn.Linear(feature_size, hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(hidden_dim, num_classes),
+        )
 
         # self.fc = nn.Linear(hidden_dim, 2)
 
-        self.mlp = nn.Sequential(
-            nn.Linear(512, 2),
-        )
+        # self.mlp = nn.Sequential(
+        #     nn.Linear(512, 2),
+        # )
 
-        self.model = torch.nn.Sequential(
-            self.model, self.mlp
-        )
+        # self.model = torch.nn.Sequential(
+        #     self.model, self.mlp
+        # )
 
         # Incorporate the base model with the newly added MLP for classification
         # self.classifier = self.mlp
@@ -178,7 +178,7 @@ class SimCLR_eval(pl.LightningModule):
         features = self.model(x)
 
         # # Pass through the projection head
-        # x = self.projection_head(x)
+        x = self.projection_head(x)
 
         # # Final classification layer
         # x = self.fc(x)
