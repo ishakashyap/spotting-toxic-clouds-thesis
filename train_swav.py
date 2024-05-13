@@ -26,7 +26,6 @@ from torchvision import transforms
 import torch.optim as optim
 from torchvision.io import read_video
 from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize, RandomHorizontalFlip, RandomApply, RandomRotation, GaussianBlur, RandomGrayscale, ColorJitter
-from torchvision.transforms import functional as F
 from torchvision.models.video import r3d_18, R3D_18_Weights
 from PIL import Image
 from sklearn.metrics import accuracy_score
