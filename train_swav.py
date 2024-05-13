@@ -327,11 +327,11 @@ def main():
                 save_dict,
                 os.path.join(args.dump_path, "checkpoint.pth.tar"),
             )
-            if epoch % args.checkpoint_freq == 0 or epoch == args.epochs - 1:
-                shutil.copyfile(
-                    os.path.join(args.dump_path, "checkpoint.pth.tar"),
-                    os.path.join(args.dump_checkpoints, "ckp-" + str(epoch) + ".pth"),
-                )
+            # if epoch % args.checkpoint_freq == 0 or epoch == args.epochs - 1:
+            #     shutil.copyfile(
+            #         os.path.join(args.dump_path, "checkpoint.pth.tar"),
+            #         os.path.join(args.dump_path, "ckp-" + str(epoch) + ".pth"),
+            #     )
         if queue is not None:
             torch.save({"queue": queue}, queue_path)
 
