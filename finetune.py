@@ -162,7 +162,7 @@ class SimCLR_eval(pl.LightningModule):
         )
 
         self.model = torch.nn.Sequential(
-            model, self.mlp
+            self.model, self.mlp
         )
 
         # Incorporate the base model with the newly added MLP for classification
