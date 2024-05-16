@@ -75,6 +75,7 @@ class R3D18WithPrototypes(nn.Module):
 
 logger = getLogger(__name__)
 
+
 parser = argparse.ArgumentParser(description="Implementation of SwAV")
 
 #########################
@@ -416,21 +417,21 @@ def train(train_loader, model, optimizer, epoch, lr_schedule, queue):
         losses.update(loss.item(), view1.size(0) * 2)  # Updated for full batch size
         batch_time.update(time.time() - end)
         end = time.time()
-        if args.rank == 0 and it % 2 == 0:
-            logger.info(
-                "Epoch: [{0}][{1}]\t"
-                "Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t"
-                "Data {data_time.val:.3f} ({data_time.avg:.3f})\t"
-                "Loss {loss.val:.4f} ({loss.avg:.4f})\t"
-                "Lr: {lr:.4f}".format(
-                    epoch,
-                    it,
-                    batch_time=batch_time,
-                    data_time=data_time,
-                    loss=losses,
-                    lr=optimizer.param_groups[0]["lr"],
-                )
+        # if args.rank == 0 and it % 2 == 0:
+        logger.info(
+            "Epoch: [{0}][{1}]\t"
+            "Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t"
+            "Data {data_time.val:.3f} ({data_time.avg:.3f})\t"
+            "Loss {loss.val:.4f} ({loss.avg:.4f})\t"
+            "Lr: {lr:.4f}".format(
+                epoch,
+                it,
+                batch_time=batch_time,
+                data_time=data_time,
+                loss=losses,
+                lr=optimizer.param_groups[0]["lr"],
             )
+        )
     return (epoch, losses.avg), queue
 
 @torch.no_grad()

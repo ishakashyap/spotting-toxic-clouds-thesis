@@ -20,7 +20,7 @@ from torchvision.models.video import r3d_18, R3D_18_Weights
 from PIL import Image
 from sklearn.metrics import accuracy_score
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, GradientAccumulationScheduler
+from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, EarlyStopping
 from train import SimCLRVideo
 import logging
 
@@ -39,6 +39,8 @@ def adjust_labels(y):
     y_adjusted[y == 32] = 0  # Gold standard negative
     y_adjusted[y == 23] = 1  # Strong positive
     y_adjusted[y == 16] = 0  # Strong negative
+    y_adjusted[y == 19] = 1  # Weak positive
+    y_adjusted[y == 20] = 0  # Weak negative
 
     return y_adjusted
 
@@ -255,6 +257,14 @@ if __name__ == '__main__':
     torch.set_float32_matmul_precision('medium')
     torch.backends.cuda.matmul.allow_tf32 = True
 
+    early_stop = EarlyStopping(
+            monitor='train_loss',
+            min_delta=0.0,
+            patience=3,
+            verbose=True,
+            mode='min'
+    )
+
     # Currenly commented out transformation in dataset loader
     train_transforms = Compose([
         Resize(224), 
@@ -268,17 +278,28 @@ if __name__ == '__main__':
         Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
     
-    folder = "./finetune_small"
-    label_folder = "./metadata_02242020.json"
+    train_folder = "./train_baseline"
+    train_label_folder = "./split/metadata_train_split_by_date.json"
 
-    full_dataset = LabeledDataset(folder, label_folder, transform=train_transforms)
-    train_size = int(0.8 * len(full_dataset))
-    val_size = len(full_dataset) - train_size
-    train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
+    val_folder = "./validation_baseline"
+    val_label_folder = "./split/metadata_validation_split_by_date.json"
+    
+    test_folder = "./test_baseline"
+    test_label_folder = "./split/metadata_test_split_by_date.json"
+
+    train_dataset = LabeledDataset(train_folder, train_label_folder, transform=train_transforms)
+    val_dataset = LabeledDataset(val_folder, val_label_folder, transform=train_transforms)
+    test_dataset = LabeledDataset(test_folder, test_label_folder, transform=train_transforms)
+
+    # TODO Check rise paper for split technique, split by cam view, check split_metadata.json
+    # train_size = int(0.8 * len(full_dataset))
+    # val_size = len(full_dataset) - train_size
+    # train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
 
     # DataLoader for the training and validation sets
     train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
     val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
+
 
     pl.seed_everything(42)  # For reproducibility
 
@@ -307,7 +328,7 @@ if __name__ == '__main__':
     trainer = pl.Trainer(
         max_epochs=50,
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
-        callbacks=[ModelCheckpoint(dirpath='./checkpoints/', monitor='train_acc', mode='max')], log_every_n_steps=2
+        callbacks=[ModelCheckpoint(dirpath='./checkpoints/', monitor='train_acc', mode='max'), early_stop], log_every_n_steps=2
     )
 
     # Start the training and validation process

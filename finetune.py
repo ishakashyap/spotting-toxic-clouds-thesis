@@ -432,6 +432,7 @@ if __name__ == '__main__':
     full_dataset = LabeledDataset(folder, label_folder, transform=train_transforms)
     train_size = int(0.8 * len(full_dataset))
     val_size = len(full_dataset) - train_size
+    # TODO Check rise paper for split technique, split by cam view, check split_metadata.json
     train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
 
     # DataLoader for the training and validation sets

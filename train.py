@@ -63,6 +63,7 @@ class SimCLRVideo(pl.LightningModule):
     
     def info_nce_loss(self, projections, mode='train'):
         # Calculate cosine similarity
+        # Try other similariy majors or other loss func
         cos_sim = nn.functional.cosine_similarity(projections[:, None, :], projections[None, :, :], dim=-1)
         # Mask out cosine similarity to itself
         self_mask = torch.eye(cos_sim.shape[0], dtype=torch.bool, device=cos_sim.device)
@@ -157,6 +158,7 @@ if __name__ == '__main__':
     torch.set_float32_matmul_precision('medium')
 
     if args.mode == 'train':
+         # Try different transformations
         train_transforms = Compose([
             Resize(224), 
             RandomApply([GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.5),

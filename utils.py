@@ -85,8 +85,8 @@ def initialize_exp(params, *args, dump_params=True):
 
     # create repo to store checkpoints
     params.dump_checkpoints = os.path.join(params.dump_path, "checkpoints")
-    if not params.rank and not os.path.isdir(params.dump_checkpoints):
-        os.mkdir(params.dump_checkpoints)
+    # if not params.rank and not os.path.isdir(params.dump_checkpoints):
+    #     os.mkdir(params.dump_checkpoints)
 
     # create a panda object to log loss and acc
     training_stats = PD_Stats(
