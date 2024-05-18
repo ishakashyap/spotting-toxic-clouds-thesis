@@ -8,6 +8,7 @@ from torchvision import transforms, models
 from torchvision.io import read_video
 from torchvision.transforms import functional as F
 from sklearn.metrics import accuracy_score
+from torchvision.models.video import r3d_18, R3D_18_Weights
 
 def adjust_labels(y):
     # Detach y to ensure no gradients are backpropagated through the label adjustment
@@ -198,7 +199,8 @@ def main():
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # Load a pre-trained ResNet model and modify the final layer
-    model = models.resnet18(pretrained=True)
+    weights = R3D_18_Weights.DEFAULT
+    model = r3d_18(weights=weights)
     num_ftrs = model.fc.in_features
     model.fc = nn.Linear(num_ftrs, 2)  # Binary classification
 
