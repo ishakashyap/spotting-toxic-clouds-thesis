@@ -289,7 +289,7 @@ if __name__ == '__main__':
 
     train_dataset = LabeledDataset(train_folder, train_label_folder, transform=train_transforms)
     val_dataset = LabeledDataset(val_folder, val_label_folder, transform=train_transforms)
-    test_dataset = LabeledDataset(test_folder, test_label_folder, transform=train_transforms)
+    # test_dataset = LabeledDataset(test_folder, test_label_folder, transform=train_transforms)
 
     # TODO Check rise paper for split technique, split by cam view, check split_metadata.json
     # train_size = int(0.8 * len(full_dataset))
@@ -297,7 +297,7 @@ if __name__ == '__main__':
     # train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
 
     # DataLoader for the training and validation sets
-    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
     val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
 
 
