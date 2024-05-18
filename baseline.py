@@ -177,7 +177,7 @@ class LabeledDataset(Dataset):
         # Append the .mp4 extension to the filenames
         labels = {item['file_name'] + '.mp4': item['label_state_admin'] 
                     for item in labels_json 
-                    if item['label_state_admin'] is not None}
+                    if item['label_state_admin'] is not None and item['label_state_admin'] != -1}
         return labels
     
     def validate_videos_and_labels(self):
