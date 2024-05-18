@@ -64,6 +64,7 @@ class SimCLR_eval(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         try:
+            self.model.train()
             x, y = batch
             y = adjust_labels(y)  # Make sure this function does not retain any graph
 
@@ -79,17 +80,17 @@ class SimCLR_eval(pl.LightningModule):
             loss.backward()
             self.optimizer.step()
 
-
+            self.model.eval()
             # with torch.no_grad():
             _, preds = torch.max(logits, dim=1)
             acc = self.accuracy(preds, y)
             top5_acc = self.top5_accuracy(preds, y)
 
+            self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
             self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
-            self.log('train_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
 
             avg_acc = self.accuracy.update(preds, y)
-            avg_top5_acc = self.top5_accuracy.update(preds, y)
+            # avg_top5_acc = self.top5_accuracy.update(preds, y)
 
             self.accuracy.reset()
             self.top5_accuracy.reset()
@@ -125,10 +126,9 @@ class SimCLR_eval(pl.LightningModule):
 
             self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
             self.log('val_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
-            self.log('val_top5_acc', top5_acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
 
             avg_acc = self.accuracy.update(preds, y)
-            avg_top5_acc = self.top5_accuracy.update(preds, y)
+            # avg_top5_acc = self.top5_accuracy.update(preds, y)
         except Exception as e:
             logging.error('Error in validation step: ', e)
         return {'loss': loss, 'val_acc': acc, 'val_top5_acc': top5_acc}
@@ -146,14 +146,14 @@ class SimCLR_eval(pl.LightningModule):
     #     overall_avg_accuracy = np.mean(self.epoch_accuracies)
     #     print(f'Overall Average Top-1 Validation Accuracy across all epochs: {overall_avg_accuracy}')
 
-    def on_epoch_end(self):
-        # Get the average accuracy from the current epoch for both training and validation
-        train_acc = self.trainer.callback_metrics.get('train_acc')
-        val_acc = self.trainer.callback_metrics.get('val_acc')
+    # def on_epoch_end(self):
+    #     # Get the average accuracy from the current epoch for both training and validation
+    #     train_acc = self.trainer.callback_metrics.get('train_acc')
+    #     val_acc = self.trainer.callback_metrics.get('val_acc')
         
-        # Create or open the log file and append the current epoch's accuracies
-        with open('epoch_accuracy_log.txt', 'a') as f:
-            f.write(f'Epoch {self.current_epoch}: Train Acc: {train_acc:.4f}, Val Acc: {val_acc:.4f}\n')
+    #     # Create or open the log file and append the current epoch's accuracies
+    #     with open('epoch_accuracy_log.txt', 'a') as f:
+    #         f.write(f'Epoch {self.current_epoch}: Train Acc: {train_acc:.4f}, Val Acc: {val_acc:.4f}\n')
 
     def configure_optimizers(self):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
@@ -304,7 +304,8 @@ if __name__ == '__main__':
     pl.seed_everything(42)  # For reproducibility
 
     # model = SimCLRVideoLinearEval(lr=1e-3, hidden_dim=224, weight_decay=5e-4, num_classes=2)
-    model = SimCLR_eval(lr=1e-3, num_classes=2)
+    model = SimCLR_eval(lr=0.01, num_classes=2)
+    # model.eval()
 
     # Update to the correct class name and possibly adjust for any required initialization arguments
     # model_state_dict = checkpoint['state_dict']
@@ -328,7 +329,7 @@ if __name__ == '__main__':
     trainer = pl.Trainer(
         max_epochs=50,
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
-        callbacks=[ModelCheckpoint(dirpath='./checkpoints/', monitor='train_acc', mode='max'), early_stop], log_every_n_steps=2
+        callbacks=[ModelCheckpoint(dirpath='./checkpoints/', monitor='train_acc', mode='max')], log_every_n_steps=2
     )
 
     # Start the training and validation process
