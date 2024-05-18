@@ -219,7 +219,7 @@ class LabeledDataset(Dataset):
         if label is None:
             print(f"Failed to load label: {video_path}")
             return None, None
-        print(view, label)
+
         return view, label
 
     def transform_video(self, video):
