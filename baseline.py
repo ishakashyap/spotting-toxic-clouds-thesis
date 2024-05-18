@@ -268,10 +268,10 @@ if __name__ == '__main__':
     # Currenly commented out transformation in dataset loader
     train_transforms = Compose([
         Resize(224), 
-        # RandomApply([GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.5),
-        # RandomApply([ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.1)], p=0.8),
-        # RandomGrayscale(p=0.2),
-        # RandomHorizontalFlip(), 
+        RandomApply([GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.5),
+        RandomApply([ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.1)], p=0.8),
+        RandomGrayscale(p=0.2),
+        RandomHorizontalFlip(), 
         # RandomRotation(degrees=15),
         # CenterCrop(224),
         ToTensor(),
