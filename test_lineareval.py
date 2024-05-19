@@ -220,8 +220,8 @@ def main():
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(self_supervised_model.fc.parameters(), lr=0.001, momentum=0.9)
 
-    if 'optimizer_state_dict' in checkpoint:
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    # if 'optimizer_state_dict' in checkpoint:
+    #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     # Train and evaluate the model
     model = train_model(self_supervised_model, dataloaders, criterion, optimizer, num_epochs=25)
