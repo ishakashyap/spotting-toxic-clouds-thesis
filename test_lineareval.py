@@ -212,7 +212,7 @@ def main():
         param.requires_grad = False
 
     # Add a linear layer on top for the classification task
-    num_ftrs = self_supervised_model.fc.in_features
+    num_ftrs = 512 #self_supervised_model.fc.in_features
     self_supervised_model.fc = nn.Linear(num_ftrs, 2)  # Assuming binary classification
 
     self_supervised_model = self_supervised_model.to(device)
