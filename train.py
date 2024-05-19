@@ -22,7 +22,7 @@ from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, Ea
 
 class SimCLRVideo(pl.LightningModule):
 
-    def __init__(self, hidden_dim, lr, temperature, weight_decay, max_epochs=50, num_classes=2):
+    def __init__(self, hidden_dim, lr, temperature, weight_decay, max_epochs=5, num_classes=2):
         super().__init__()
         self.save_hyperparameters()
         assert self.hparams.temperature > 0.0, 'The temperature must be a positive float!'
@@ -195,12 +195,12 @@ if __name__ == '__main__':
 
         # Update to the correct class name and pass necessary initialization arguments
         # else:
-        model = SimCLRVideo(hidden_dim=224, lr=1e-3, temperature=0.07, weight_decay=1e-4, max_epochs=15)
+        model = SimCLRVideo(hidden_dim=224, lr=1e-3, temperature=0.07, weight_decay=1e-4, max_epochs=5)
         # optimizer = optim.Adam(model.parameters(), lr=1e-2)
         trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, 'SimCLR_full_data.pth'),
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
         # devices=1 if torch.cuda.is_available() else None,  # Adjust as per your setup
-        max_epochs=50,
+        max_epochs=5,
         callbacks=[
             ModelCheckpoint(save_weights_only=True, mode='min', monitor='train_loss'),
             LearningRateMonitor('epoch'), early_stop], log_every_n_steps=2)
