@@ -195,7 +195,7 @@ if __name__ == '__main__':
 
         # Update to the correct class name and pass necessary initialization arguments
         # else:
-        model = SimCLRVideo(hidden_dim=224, lr=1e-3, temperature=0.07, weight_decay=1e-4, max_epochs=50)
+        model = SimCLRVideo(hidden_dim=224, lr=1e-3, temperature=0.07, weight_decay=1e-4, max_epochs=15)
         # optimizer = optim.Adam(model.parameters(), lr=1e-2)
         trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, 'SimCLR_full_data.pth'),
         accelerator="gpu" if torch.cuda.is_available() else "cpu",

@@ -202,8 +202,10 @@ def main():
     model_path = "SimCLR_full_data.pth"
     weights = R3D_18_Weights.DEFAULT
     self_supervised_model  = r3d_18(weights=weights)
-    self_supervised_model .fc = nn.Identity()
-    self_supervised_model .load_state_dict(torch.load(model_path))
+    self_supervised_model.fc = nn.Identity()
+
+    checkpoint = torch.load(model_path, map_location='cpu')
+    self_supervised_model.load_state_dict(checkpoint['model_state_dict'], strict=False)
 
     # Freeze all layers of the pre-trained model
     for param in self_supervised_model.parameters():
@@ -217,6 +219,9 @@ def main():
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(self_supervised_model.fc.parameters(), lr=0.001, momentum=0.9)
+
+    if 'optimizer_state_dict' in checkpoint:
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     # Train and evaluate the model
     model = train_model(self_supervised_model, dataloaders, criterion, optimizer, num_epochs=25)
