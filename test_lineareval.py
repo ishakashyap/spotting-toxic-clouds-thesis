@@ -153,14 +153,13 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs=25):
             epoch_f1 = f1_score(all_labels, all_preds, average='weighted')
 
             print(f'{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f} F1: {epoch_f1:.4f}')
-            print(f'{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
+            print(f'{phase} classification Report:')
+            print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
 
             # Deep copy the model
             if phase == 'val' and epoch_acc > best_acc:
                 best_acc = epoch_acc
                 best_model_wts = model.state_dict()
-
-    print(f'Best val Acc: {best_acc:4f}')
 
     # Load best model weights
     model.load_state_dict(best_model_wts)
@@ -227,13 +226,13 @@ def main():
     test_label_folder = "./split/metadata_test_split_by_date.json"
 
     train_dataset = VideoDataset(train_folder, train_label_folder, transform=train_transforms)
-    val_dataset = VideoDataset(val_folder, val_label_folder, transform=val_transforms)
-    test_dataset = VideoDataset(test_folder, test_label_folder, transform=val_transforms)
+    val_dataset = VideoDataset(val_folder, val_label_folder, transform=train_transforms)
+    test_dataset = VideoDataset(test_folder, test_label_folder, transform=train_transforms)
 
     dataloaders = {
         'train': DataLoader(train_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True),
         'val': DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True),
-        'test': DataLoader(test_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
+        # 'test': DataLoader(test_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
     }
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -264,8 +263,8 @@ def main():
     #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     # Train and evaluate the model
-    model = train_model(self_supervised_model, dataloaders, criterion, optimizer, num_epochs=3)
-    test_model(model, dataloaders['test'], criterion)
+    model = train_model(self_supervised_model, dataloaders, criterion, optimizer, num_epochs=2)
+    # test_model(model, dataloaders['test'], criterion)
 
     # Save the trained model
     torch.save(model.state_dict(), 'linear_eval_model.pth')
