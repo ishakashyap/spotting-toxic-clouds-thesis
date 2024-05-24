@@ -105,14 +105,16 @@ class VideoDataset(Dataset):
         video_tensor = torch.stack(transformed_frames)
         return video_tensor.permute(1, 0, 2, 3)
     
-def plot_confusion_matrix(y_true, y_pred, classes, title='Confusion matrix'):
+def plot_confusion_matrix(y_true, y_pred, classes, title='Confusion matrix', filename='conf_matrix.png'):
     cm = confusion_matrix(y_true, y_pred)
     plt.figure(figsize=(8, 6))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=classes, yticklabels=classes)
     plt.xlabel('Predicted')
     plt.ylabel('True')
     plt.title(title)
+    plt.savefig(filename)
     plt.show()
+    plt.close()
 
 def train_model(model, dataloaders, criterion, optimizer, num_epochs=25):
     best_model_wts = model.state_dict()
@@ -165,9 +167,13 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs=25):
             epoch_f1 = f1_score(all_labels, all_preds, average='weighted')
 
             print(f'{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f} F1: {epoch_f1:.4f}')
-            print(f'{phase} classification Report:')
-            print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
-            plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'{phase} Confusion Matrix')
+            clf_report = classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1'])
+            print(f'{phase} classification Report: ', clf_report)
+            # print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
+            plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'{phase} Confusion Matrix', filename=f'./{phase}_conf.png')
+
+            with open(f'./{phase}_clf_report.txt', 'w') as f:
+                f.write(clf_report)
 
             # Deep copy the model
             if phase == 'val' and epoch_acc > best_acc:
@@ -176,6 +182,7 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs=25):
 
     # Load best model weights
     model.load_state_dict(best_model_wts)
+
     return model
 
 def test_model(model, dataloader, criterion):
@@ -205,10 +212,13 @@ def test_model(model, dataloader, criterion):
     epoch_f1 = f1_score(all_labels, all_preds, average='weighted')
     
     print(f'Test Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f} F1: {epoch_f1:.4f}')
-    print('Classification Report:')
-    print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
-    plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title='Test Confusion Matrix')
+    test_clf_report = classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1'])
+    print('Classification Report: ', test_clf_report)
+    # print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
+    plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title='Test Confusion Matrix', filename='./test_conf.png')
 
+    with open(f'./test_clf_report.txt', 'w') as f:
+                f.write(test_clf_report)
 
 def calculate_class_weights(labels):
     labels = np.array(labels)
