@@ -197,11 +197,20 @@ def test_model(model, dataloader, criterion):
     print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
 
 
-def calculate_class_weights(dataset):
-    class_counts = np.bincount(dataset.labels)
+def calculate_class_weights(labels):
+    labels = np.array(labels)
+    class_counts = np.bincount(labels)
     weights = 1. / class_counts
     weights = weights / weights.sum()
     return torch.tensor(weights, dtype=torch.float)
+
+def extract_labels_from_dataset(dataset):
+    all_labels = []
+    for idx in range(len(dataset)):
+        _, label = dataset[idx]
+        if label is not None:
+            all_labels.append(label.item())
+    return all_labels
 
 def main():
 
@@ -264,7 +273,8 @@ def main():
 
     self_supervised_model = self_supervised_model.to(device)
 
-    class_weights = calculate_class_weights(train_dataset)
+    train_labels = extract_labels_from_dataset(train_dataset)
+    class_weights = calculate_class_weights(train_labels)
     criterion = nn.CrossEntropyLoss(weight=class_weights.cuda())
     optimizer = optim.SGD(self_supervised_model.fc.parameters(), lr=0.001, momentum=0.9)
 
