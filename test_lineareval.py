@@ -1,14 +1,15 @@
 import os
 import json
 import torch
+import numpy as np
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, Dataset
-from torchvision import transforms, models
 from torchvision.io import read_video
+from torchvision import transforms, models
+from torch.utils.data import DataLoader, Dataset
 from torchvision.transforms import functional as F
-from sklearn.metrics import accuracy_score, classification_report, f1_score
 from torchvision.models.video import r3d_18, R3D_18_Weights
+from sklearn.metrics import classification_report, f1_score
 
 def adjust_labels(y):
     # Detach y to ensure no gradients are backpropagated through the label adjustment
@@ -195,6 +196,13 @@ def test_model(model, dataloader, criterion):
     print('Classification Report:')
     print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
 
+
+def calculate_class_weights(dataset):
+    class_counts = np.bincount(dataset.labels)
+    weights = 1. / class_counts
+    weights = weights / weights.sum()
+    return torch.tensor(weights, dtype=torch.float)
+
 def main():
 
     train_transforms = transforms.Compose([
@@ -256,7 +264,8 @@ def main():
 
     self_supervised_model = self_supervised_model.to(device)
 
-    criterion = nn.CrossEntropyLoss()
+    class_weights = calculate_class_weights(train_dataset)
+    criterion = nn.CrossEntropyLoss(weight=class_weights.cuda())
     optimizer = optim.SGD(self_supervised_model.fc.parameters(), lr=0.001, momentum=0.9)
 
     # if 'optimizer_state_dict' in checkpoint:
