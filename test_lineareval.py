@@ -3,13 +3,15 @@ import json
 import torch
 import numpy as np
 import torch.nn as nn
+import matplotlib.pyplot as plt
+import seaborn as sns
 import torch.optim as optim
 from torchvision.io import read_video
 from torchvision import transforms, models
 from torch.utils.data import DataLoader, Dataset
 from torchvision.transforms import functional as F
 from torchvision.models.video import r3d_18, R3D_18_Weights
-from sklearn.metrics import classification_report, f1_score
+from sklearn.metrics import classification_report, f1_score, confusion_matrix
 
 def adjust_labels(y):
     # Detach y to ensure no gradients are backpropagated through the label adjustment
@@ -102,6 +104,15 @@ class VideoDataset(Dataset):
             transformed_frames.append(frame)
         video_tensor = torch.stack(transformed_frames)
         return video_tensor.permute(1, 0, 2, 3)
+    
+def plot_confusion_matrix(y_true, y_pred, classes, title='Confusion matrix'):
+    cm = confusion_matrix(y_true, y_pred)
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=classes, yticklabels=classes)
+    plt.xlabel('Predicted')
+    plt.ylabel('True')
+    plt.title(title)
+    plt.show()
 
 def train_model(model, dataloaders, criterion, optimizer, num_epochs=25):
     best_model_wts = model.state_dict()
@@ -156,6 +167,7 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs=25):
             print(f'{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f} F1: {epoch_f1:.4f}')
             print(f'{phase} classification Report:')
             print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
+            plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'{phase} Confusion Matrix')
 
             # Deep copy the model
             if phase == 'val' and epoch_acc > best_acc:
@@ -195,6 +207,7 @@ def test_model(model, dataloader, criterion):
     print(f'Test Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f} F1: {epoch_f1:.4f}')
     print('Classification Report:')
     print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
+    plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title='Test Confusion Matrix')
 
 
 def calculate_class_weights(labels):
