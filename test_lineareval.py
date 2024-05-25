@@ -116,7 +116,7 @@ def get_oversampled_loader(dataset):
     samples_weight = np.array([weight[t] for t in targets])
 
     samples_weight = torch.from_numpy(samples_weight)
-    sampler = WeightedRandomSampler(samples_weight.type('torch.DoubleTensor'), len(samples_weight))
+    sampler = WeightedRandomSampler(samples_weight.type('torch.DoubleTensor'), len(samples_weight), replacement=True)
 
     return sampler
     
