@@ -326,7 +326,7 @@ def test_model(model, dataloader, criterion):
 
     epoch_loss = running_loss / len(dataloader.dataset)
     epoch_acc = running_corrects.double() / len(dataloader.dataset)
-    epoch_f1 = f1_score(all_labels, all_preds, average='weighted')
+    epoch_f1 = f1_score(all_labels, all_preds)
     
     print(f'Test Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f} F1: {epoch_f1:.4f}')
     test_clf_report = classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1'])
