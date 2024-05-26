@@ -110,7 +110,11 @@ class VideoDataset(Dataset):
         return video_tensor.permute(1, 0, 2, 3)
     
 def get_oversampled_loader(dataset):
-    targets = dataset.targets.numpy()
+    targets = []
+    for _, label in dataset:
+        if label is not None:
+            targets.append(label.item())
+            
     class_sample_count = np.array([len(np.where(targets == t)[0]) for t in np.unique(targets)])
     weight = 1. / class_sample_count
     samples_weight = np.array([weight[t] for t in targets])
