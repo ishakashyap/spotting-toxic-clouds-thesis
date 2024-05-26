@@ -180,7 +180,7 @@ def train(train_loader, val_loader, model, optimizer, criterion, num_epochs):
         print(f'Epoch {epoch+1}/{num_epochs}, Training Loss: {epoch_loss:.4f}')
         print('Training Classification Report:')
         print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
-        plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Training Confusion Matrix Epoch {epoch+1}', cm_filename=f'training_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'training_classification_report_epoch_{epoch+1}.txt')
+        plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Training Confusion Matrix Epoch {epoch+1}', cm_filename=f'training_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'training_baseline_report_epoch_{epoch+1}.txt')
 
         model.eval()
         val_loss = 0.0
@@ -205,7 +205,7 @@ def train(train_loader, val_loader, model, optimizer, criterion, num_epochs):
         print(f'Epoch {epoch+1}/{num_epochs}, Validation Loss: {epoch_loss:.4f}')
         print('Validation Classification Report:')
         print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
-        plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Validation Confusion Matrix Epoch {epoch+1}', cm_filename=f'validation_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'validation_classification_report_epoch_{epoch+1}.txt')
+        plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Validation Confusion Matrix Epoch {epoch+1}', cm_filename=f'validation_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'validation_baseline_report_epoch_{epoch+1}.txt')
 
 def test(test_loader, model, criterion):
     model.eval()
@@ -231,7 +231,7 @@ def test(test_loader, model, criterion):
     print(f'Test Loss: {epoch_loss:.4f}')
     print('Test Classification Report:')
     print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
-    plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title='Test Confusion Matrix', cm_filename='test_confusion_matrix.png', cr_filename='test_classification_report.txt')
+    plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title='Test Confusion Matrix', cm_filename='test_confusion_matrix.png', cr_filename='test_baseline_report.txt')
 
 # def train_model(model, dataloaders, criterion, optimizer, num_epochs=25):
 #     best_model_wts = model.state_dict()
