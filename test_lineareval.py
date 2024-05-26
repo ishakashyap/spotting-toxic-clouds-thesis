@@ -118,18 +118,32 @@ def get_oversampled_loader(dataset):
     samples_weight = torch.from_numpy(samples_weight)
     sampler = WeightedRandomSampler(samples_weight.type('torch.DoubleTensor'), len(samples_weight), replacement=True)
 
+    sampled_targets = [targets[i] for i in list(sampler)]
+    print_class_distribution(sampled_targets, "Class Distribution After Sampling")
+
     return sampler
+
+def print_class_distribution(labels, title):
+    unique, counts = np.unique(labels, return_counts=True)
+    distribution = dict(zip(unique, counts))
+    print(f"{title}: {distribution}")
+    plt.figure(figsize=(8, 4))
+    plt.bar(distribution.keys(), distribution.values())
+    plt.xlabel('Class')
+    plt.ylabel('Count')
+    plt.title(title)
+    plt.show()
     
 def plot_confusion_matrix(y_true, y_pred, classes, title='Confusion matrix', cm_filename='conf_matrix.png', cr_filename='clf_report.txt'):
-    cm = confusion_matrix(y_true, y_pred)
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=classes, yticklabels=classes)
-    plt.xlabel('Predicted')
-    plt.ylabel('True')
-    plt.title(title)
-    plt.savefig(cm_filename)
-    plt.show()
-    plt.close()
+    # cm = confusion_matrix(y_true, y_pred)
+    # plt.figure(figsize=(8, 6))
+    # sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=classes, yticklabels=classes)
+    # plt.xlabel('Predicted')
+    # plt.ylabel('True')
+    # plt.title(title)
+    # plt.savefig(cm_filename)
+    # plt.show()
+    # plt.close()
 
     report = classification_report(y_true, y_pred, target_names=classes)
     with open(cr_filename, 'w') as f:
@@ -376,7 +390,6 @@ def main():
     val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True, sampler=val_sampler)
     test_loader = DataLoader(test_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True, sampler=test_sampler)
     
-
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # Load a pre-trained ResNet model and modify the final layer
@@ -410,7 +423,7 @@ def main():
     # model = train_model(self_supervised_model, dataloaders, criterion, optimizer, num_epochs=2)
     # test_model(model, dataloaders['test'], criterion)
     train(train_loader=train_loader, val_loader=val_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=3)
-    test(test_loader=test_loader, model=self_supervised_model, criterion=criterion)
+    # test(test_loader=test_loader, model=self_supervised_model, criterion=criterion)
     # Save the trained model
     torch.save(self_supervised_model.state_dict(), 'linear_eval_model.pth')
 
