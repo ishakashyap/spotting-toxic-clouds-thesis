@@ -50,9 +50,9 @@ class VideoDataset(Dataset):
         with open(labels_json_path, 'r') as f:
             labels_json = json.load(f)
         # Append the .mp4 extension to the filenames
-        labels = {item['file_name'] + '.mp4': item['label_state_admin'] 
+        labels = {item['file_name'] + '.mp4': item['label'] 
                     for item in labels_json 
-                    if item['label_state_admin'] is not None and item['label_state_admin'] != -1}
+                    if item['label'] is not None and item['label'] != -1}
         return labels
     
     def validate_videos_and_labels(self):
@@ -96,7 +96,7 @@ class VideoDataset(Dataset):
             return None, None
         
         label = torch.tensor(label)
-        label = adjust_labels(label)
+        # label = adjust_labels(label)
         return view, label
 
     def transform_video(self, video):
@@ -114,7 +114,7 @@ def get_oversampled_loader(dataset):
     for _, label in dataset:
         if label is not None:
             targets.append(label.item())
-            
+
     class_sample_count = np.array([len(np.where(targets == t)[0]) for t in np.unique(targets)])
     weight = 1. / class_sample_count
     samples_weight = np.array([weight[t] for t in targets])
