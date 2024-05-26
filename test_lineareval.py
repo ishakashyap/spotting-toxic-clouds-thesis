@@ -386,13 +386,13 @@ def main():
     val_dataset = VideoDataset(val_folder, val_label_folder, transform=train_transforms)
     test_dataset = VideoDataset(test_folder, test_label_folder, transform=train_transforms)
 
-    train_sampler = get_oversampled_loader(train_dataset)
-    val_sampler = get_oversampled_loader(val_dataset)
-    test_sampler = get_oversampled_loader(test_dataset)
+    # train_sampler = get_oversampled_loader(train_dataset)
+    # val_sampler = get_oversampled_loader(val_dataset)
+    # test_sampler = get_oversampled_loader(test_dataset)
 
-    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True, sampler=train_sampler)
-    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True, sampler=val_sampler)
-    test_loader = DataLoader(test_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True, sampler=test_sampler)
+    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
+    test_loader = DataLoader(test_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
     
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
