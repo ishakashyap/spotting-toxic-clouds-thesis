@@ -233,75 +233,6 @@ def test(test_loader, model, criterion):
     print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
     plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title='Test Confusion Matrix', cm_filename='test_confusion_matrix.png', cr_filename='test_baseline_report.txt')
 
-# def train_model(model, dataloaders, criterion, optimizer, num_epochs=25):
-#     best_model_wts = model.state_dict()
-#     best_acc = 0.0
-
-#     for epoch in range(num_epochs):
-#         print(f'Epoch {epoch}/{num_epochs - 1}')
-#         print('-' * 10)
-
-#         # Each epoch has a training and validation phase
-#         for phase in ['train', 'val']:
-#             if phase == 'train':
-#                 model.train()  # Set model to training mode
-#             else:
-#                 model.eval()   # Set model to evaluate mode
-
-#             running_loss = 0.0
-#             running_corrects = 0
-#             all_preds = []
-#             all_labels = []
-
-#             # Iterate over data.
-#             for inputs, labels in dataloaders[phase]:
-#                 inputs = inputs.cuda()
-#                 labels = labels.cuda()
-
-#                 # Zero the parameter gradients
-#                 optimizer.zero_grad()
-
-#                 # Forward
-#                 # Track history if only in train
-#                 with torch.set_grad_enabled(phase == 'train'):
-#                     outputs = model(inputs)
-#                     _, preds = torch.max(outputs, 1)
-#                     loss = criterion(outputs, labels)
-
-#                     # Backward + optimize only if in training phase
-#                     if phase == 'train':
-#                         loss.backward()
-#                         optimizer.step()
-
-#                 # Statistics
-#                 running_loss += loss.item() * inputs.size(0)
-#                 running_corrects += torch.sum(preds == labels.data)
-#                 all_preds.extend(preds.cpu().numpy())
-#                 all_labels.extend(labels.cpu().numpy())
-
-#             epoch_loss = running_loss / len(dataloaders[phase].dataset)
-#             epoch_acc = running_corrects.double() / len(dataloaders[phase].dataset)
-#             epoch_f1 = f1_score(all_labels, all_preds, average='weighted')
-
-#             print(f'{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f} F1: {epoch_f1:.4f}')
-#             clf_report = classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1'])
-#             print(f'{phase} classification Report: ', clf_report)
-#             # print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
-#             plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'{phase} Confusion Matrix', filename=f'./{phase}_conf.png')
-
-#             with open(f'./{phase}_clf_report.txt', 'w') as f:
-#                 f.write(clf_report)
-
-#             # Deep copy the model
-#             if phase == 'val' and epoch_acc > best_acc:
-#                 best_acc = epoch_acc
-#                 best_model_wts = model.state_dict()
-
-#     # Load best model weights
-#     model.load_state_dict(best_model_wts)
-
-#     return model
-
 def test_model(model, dataloader, criterion):
     model.eval()
     running_loss = 0.0
@@ -336,13 +267,6 @@ def test_model(model, dataloader, criterion):
 
     with open(f'./test_clf_report.txt', 'w') as f:
                 f.write(test_clf_report)
-
-def calculate_class_weights(labels):
-    labels = np.array(labels)
-    class_counts = np.bincount(labels)
-    weights = 1. / class_counts
-    weights = weights / weights.sum()
-    return torch.tensor(weights, dtype=torch.float)
 
 def extract_labels_from_dataset(dataset):
     all_labels = []
@@ -398,15 +322,15 @@ def main():
 
     weights = R3D_18_Weights.DEFAULT
     self_supervised_model  = r3d_18(weights=weights)
-    self_supervised_model.fc = nn.Identity()
+    # self_supervised_model.fc = nn.Identity()
 
     # Freeze all layers of the pre-trained model
-    for param in self_supervised_model.parameters():
-        param.requires_grad = False
+    # for param in self_supervised_model.parameters():
+    #     param.requires_grad = False
 
     # Add a linear layer on top for the classification task
-    num_ftrs = 512 #self_supervised_model.fc.in_features
-    self_supervised_model.fc = nn.Linear(num_ftrs, 2)  # Assuming binary classification
+    # num_ftrs = 512 #self_supervised_model.fc.in_features
+    # self_supervised_model.fc = nn.Linear(num_ftrs, 2)  # Assuming binary classification
 
     self_supervised_model = self_supervised_model.to(device)
 
