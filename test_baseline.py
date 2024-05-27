@@ -3,15 +3,13 @@ import json
 import torch
 import numpy as np
 import torch.nn as nn
-import matplotlib.pyplot as plt
-import seaborn as sns
 import torch.optim as optim
+import matplotlib.pyplot as plt
 from torchvision.io import read_video
 from torchvision import transforms, models
-from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
-from imblearn.over_sampling import RandomOverSampler
+from torch.utils.data import DataLoader, Dataset
 from torchvision.transforms import functional as F
-from torchvision.models.video import r3d_18, R3D_18_Weights
+from torchvision.models.video import r3d_18, R3D_18_Weights,  r2plus1d_18, R2Plus1D_18_Weights
 from sklearn.metrics import classification_report, f1_score, confusion_matrix
 
 def adjust_labels(y):
@@ -108,24 +106,6 @@ class VideoDataset(Dataset):
             transformed_frames.append(frame)
         video_tensor = torch.stack(transformed_frames)
         return video_tensor.permute(1, 0, 2, 3)
-    
-def get_oversampled_loader(dataset):
-    targets = []
-    for _, label in dataset:
-        if label is not None:
-            targets.append(label.item())
-
-    class_sample_count = np.array([len(np.where(targets == t)[0]) for t in np.unique(targets)])
-    weight = 1. / class_sample_count
-    samples_weight = np.array([weight[t] for t in targets])
-
-    samples_weight = torch.from_numpy(samples_weight)
-    sampler = WeightedRandomSampler(samples_weight.type('torch.DoubleTensor'), len(samples_weight), replacement=True)
-
-    sampled_targets = [targets[i] for i in list(sampler)]
-    print_class_distribution(sampled_targets, "Class Distribution After Sampling")
-
-    return sampler
 
 def print_class_distribution(labels, title):
     unique, counts = np.unique(labels, return_counts=True)
@@ -180,7 +160,7 @@ def train(train_loader, val_loader, model, optimizer, criterion, num_epochs):
         print(f'Epoch {epoch+1}/{num_epochs}, Training Loss: {epoch_loss:.4f}')
         print('Training Classification Report:')
         print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
-        plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Training Confusion Matrix Epoch {epoch+1}', cm_filename=f'training_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'training_baseline_report_epoch_{epoch+1}.txt')
+        # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Training Confusion Matrix Epoch {epoch+1}', cm_filename=f'training_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'training_baseline_report_epoch_{epoch+1}.txt')
 
         model.eval()
         val_loss = 0.0
@@ -205,7 +185,7 @@ def train(train_loader, val_loader, model, optimizer, criterion, num_epochs):
         print(f'Epoch {epoch+1}/{num_epochs}, Validation Loss: {epoch_loss:.4f}')
         print('Validation Classification Report:')
         print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
-        plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Validation Confusion Matrix Epoch {epoch+1}', cm_filename=f'validation_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'validation_baseline_report_epoch_{epoch+1}.txt')
+        # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Validation Confusion Matrix Epoch {epoch+1}', cm_filename=f'validation_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'validation_baseline_report_epoch_{epoch+1}.txt')
 
 def test(test_loader, model, criterion):
     model.eval()
@@ -231,7 +211,7 @@ def test(test_loader, model, criterion):
     print(f'Test Loss: {epoch_loss:.4f}')
     print('Test Classification Report:')
     print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
-    plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title='Test Confusion Matrix', cm_filename='test_confusion_matrix.png', cr_filename='test_baseline_report.txt')
+    # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title='Test Confusion Matrix', cm_filename='test_confusion_matrix.png', cr_filename='test_baseline_report.txt')
 
 def test_model(model, dataloader, criterion):
     model.eval()
@@ -263,7 +243,7 @@ def test_model(model, dataloader, criterion):
     test_clf_report = classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1'])
     print('Classification Report: ', test_clf_report)
     # print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
-    plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title='Test Confusion Matrix', filename='./test_conf.png')
+    # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title='Test Confusion Matrix', filename='./test_conf.png')
 
     with open(f'./test_clf_report.txt', 'w') as f:
                 f.write(test_clf_report)
@@ -320,22 +300,25 @@ def main():
     
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    weights = R3D_18_Weights.DEFAULT
-    self_supervised_model  = r3d_18(weights=weights)
-    # self_supervised_model.fc = nn.Identity()
+    # weights = R3D_18_Weights.DEFAULT
+    # self_supervised_model  = r3d_18(weights=weights)
+
+    weights = R2Plus1D_18_Weights.DEFAULT
+    self_supervised_model  = r2plus1d_18(weights=weights)
+    self_supervised_model.fc = nn.Identity()
 
     # Freeze all layers of the pre-trained model
     # for param in self_supervised_model.parameters():
     #     param.requires_grad = False
 
     # Add a linear layer on top for the classification task
-    # num_ftrs = 512 #self_supervised_model.fc.in_features
-    # self_supervised_model.fc = nn.Linear(num_ftrs, 2)  # Assuming binary classification
+    num_ftrs = 512 #self_supervised_model.fc.in_features
+    self_supervised_model.fc = nn.Linear(num_ftrs, 2)  # Assuming binary classification
 
     self_supervised_model = self_supervised_model.to(device)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(self_supervised_model.fc.parameters(), lr=0.001, momentum=0.9)
+    optimizer = optim.SGD(self_supervised_model.fc.parameters(), lr=0.01, momentum=0.9)
 
     # if 'optimizer_state_dict' in checkpoint:
     #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
