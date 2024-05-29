@@ -5,6 +5,7 @@ import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
+from i3d_model import Inception3D
 from torchvision.io import read_video
 from torchvision import transforms, models
 from torch.utils.data import DataLoader, Dataset
@@ -300,20 +301,23 @@ def main():
     
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    weights = R3D_18_Weights.DEFAULT
-    self_supervised_model  = r3d_18(weights=weights)
+    # weights = R3D_18_Weights.DEFAULT
+    # self_supervised_model  = r3d_18(weights=weights)
 
     # weights = R2Plus1D_18_Weights.DEFAULT
     # self_supervised_model  = r2plus1d_18(weights=weights)
-    self_supervised_model.fc = nn.Identity()
+    # self_supervised_model.fc = nn.Identity()
 
     # Freeze all layers of the pre-trained model
     # for param in self_supervised_model.parameters():
     #     param.requires_grad = False
 
     # Add a linear layer on top for the classification task
-    num_ftrs = 512 #self_supervised_model.fc.in_features
-    self_supervised_model.fc = nn.Linear(num_ftrs, 2)  # Assuming binary classification
+    # num_ftrs = 512 #self_supervised_model.fc.in_features
+    # self_supervised_model.fc = nn.Linear(num_ftrs, 2)  # Assuming binary classification
+
+    self_supervised_model = Inception3D(num_classes=2).cuda()
+
 
     self_supervised_model = self_supervised_model.to(device)
 
