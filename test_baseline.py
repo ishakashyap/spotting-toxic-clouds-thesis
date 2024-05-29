@@ -300,11 +300,11 @@ def main():
     
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    # weights = R3D_18_Weights.DEFAULT
-    # self_supervised_model  = r3d_18(weights=weights)
+    weights = R3D_18_Weights.DEFAULT
+    self_supervised_model  = r3d_18(weights=weights)
 
-    weights = R2Plus1D_18_Weights.DEFAULT
-    self_supervised_model  = r2plus1d_18(weights=weights)
+    # weights = R2Plus1D_18_Weights.DEFAULT
+    # self_supervised_model  = r2plus1d_18(weights=weights)
     self_supervised_model.fc = nn.Identity()
 
     # Freeze all layers of the pre-trained model
@@ -325,7 +325,7 @@ def main():
 
     # Train and evaluate the model
 
-    train(train_loader=train_loader, val_loader=val_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=3)
+    train(train_loader=train_loader, val_loader=val_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=5)
     # test(test_loader=test_loader, model=self_supervised_model, criterion=criterion)
     # Save the trained model
     # torch.save(self_supervised_model.state_dict(), 'linear_eval_model.pth')
