@@ -263,10 +263,10 @@ def main():
         transforms.Resize(224), 
         transforms.RandomApply([transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.5),
         transforms.RandomApply([transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.1)], p=0.8),
-        transforms.RandomGrayscale(p=0.2),
-        transforms.RandomHorizontalFlip(), 
+        # transforms.RandomGrayscale(p=0.2),
+        # transforms.RandomHorizontalFlip(), 
         transforms.RandomRotation(degrees=15),
-        transforms.CenterCrop(224),
+        # transforms.CenterCrop(224),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
@@ -301,8 +301,8 @@ def main():
     
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    # weights = R3D_18_Weights.DEFAULT
-    # self_supervised_model  = r3d_18(weights=weights)
+    weights = R3D_18_Weights.DEFAULT
+    self_supervised_model  = r3d_18(weights=weights)
 
     # weights = R2Plus1D_18_Weights.DEFAULT
     # self_supervised_model  = r2plus1d_18(weights=weights)
@@ -316,13 +316,13 @@ def main():
     # num_ftrs = 512 #self_supervised_model.fc.in_features
     # self_supervised_model.fc = nn.Linear(num_ftrs, 2)  # Assuming binary classification
 
-    self_supervised_model = Inception3D(num_classes=2).cuda()
+    # self_supervised_model = Inception3D(num_classes=2).cuda()
 
 
     self_supervised_model = self_supervised_model.to(device)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(self_supervised_model.fc.parameters(), lr=0.01, momentum=0.9)
+    optimizer = optim.SGD(self_supervised_model.fc.parameters(), lr=0.1, momentum=0.9)
 
     # if 'optimizer_state_dict' in checkpoint:
     #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
