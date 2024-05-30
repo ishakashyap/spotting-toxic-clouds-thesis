@@ -161,7 +161,7 @@ def train(train_loader, val_loader, model, optimizer, criterion, num_epochs):
         print(f'Epoch {epoch+1}/{num_epochs}, Training Loss: {epoch_loss:.4f}')
         print('Training Classification Report:')
         print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
-        # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Training Confusion Matrix Epoch {epoch+1}', cm_filename=f'training_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'training_baseline_report_epoch_{epoch+1}.txt')
+        plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Training Confusion Matrix Epoch {epoch+1}', cm_filename=f'training_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'training_baseline_report_epoch_{epoch+1}.txt')
 
         model.eval()
         val_loss = 0.0
@@ -186,7 +186,7 @@ def train(train_loader, val_loader, model, optimizer, criterion, num_epochs):
         print(f'Epoch {epoch+1}/{num_epochs}, Validation Loss: {epoch_loss:.4f}')
         print('Validation Classification Report:')
         print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
-        # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Validation Confusion Matrix Epoch {epoch+1}', cm_filename=f'validation_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'validation_baseline_report_epoch_{epoch+1}.txt')
+        plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Validation Confusion Matrix Epoch {epoch+1}', cm_filename=f'validation_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'validation_baseline_report_epoch_{epoch+1}.txt')
 
 def test(test_loader, model, criterion):
     model.eval()
@@ -212,7 +212,7 @@ def test(test_loader, model, criterion):
     print(f'Test Loss: {epoch_loss:.4f}')
     print('Test Classification Report:')
     print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
-    # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title='Test Confusion Matrix', cm_filename='test_confusion_matrix.png', cr_filename='test_baseline_report.txt')
+    plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title='Test Confusion Matrix', cm_filename='test_confusion_matrix.png', cr_filename='test_baseline_report.txt')
 
 def test_model(model, dataloader, criterion):
     model.eval()
@@ -244,7 +244,7 @@ def test_model(model, dataloader, criterion):
     test_clf_report = classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1'])
     print('Classification Report: ', test_clf_report)
     # print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
-    # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title='Test Confusion Matrix', filename='./test_conf.png')
+    plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title='Test Confusion Matrix', filename='./test_conf.png')
 
     with open(f'./test_clf_report.txt', 'w') as f:
                 f.write(test_clf_report)
@@ -263,10 +263,10 @@ def main():
         transforms.Resize(224), 
         transforms.RandomApply([transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.5),
         transforms.RandomApply([transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.1)], p=0.8),
-        # transforms.RandomGrayscale(p=0.2),
-        # transforms.RandomHorizontalFlip(), 
+        transforms.RandomGrayscale(p=0.2),
+        transforms.RandomHorizontalFlip(), 
         transforms.RandomRotation(degrees=15),
-        # transforms.CenterCrop(224),
+        transforms.CenterCrop(224),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
@@ -318,7 +318,6 @@ def main():
 
     # self_supervised_model = Inception3D(num_classes=2).cuda()
 
-
     self_supervised_model = self_supervised_model.to(device)
 
     criterion = nn.CrossEntropyLoss()
@@ -329,7 +328,7 @@ def main():
 
     # Train and evaluate the model
 
-    train(train_loader=train_loader, val_loader=val_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=5)
+    train(train_loader=train_loader, val_loader=val_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=20)
     # test(test_loader=test_loader, model=self_supervised_model, criterion=criterion)
     # Save the trained model
     # torch.save(self_supervised_model.state_dict(), 'linear_eval_model.pth')
