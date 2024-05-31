@@ -331,7 +331,7 @@ def main():
 
     # Train and evaluate the model
 
-    train(train_loader=train_loader, val_loader=val_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, scheduler=scheduler, num_epochs=6)
+    train(train_loader=train_loader, val_loader=val_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, scheduler=scheduler, num_epochs=20)
     # test(test_loader=test_loader, model=self_supervised_model, criterion=criterion)
     # Save the trained model
     # torch.save(self_supervised_model.state_dict(), 'linear_eval_model.pth')
