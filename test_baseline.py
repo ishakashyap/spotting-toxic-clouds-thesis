@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
 from i3d_model import Inception3D
+from torch.optim.lr_scheduler import StepLR
 from torchvision.io import read_video
 from torchvision import transforms, models
 from torch.utils.data import DataLoader, Dataset
@@ -134,7 +135,7 @@ def plot_confusion_matrix(y_true, y_pred, classes, title='Confusion matrix', cm_
     with open(cr_filename, 'w') as f:
         f.write(report)
 
-def train(train_loader, val_loader, model, optimizer, criterion, num_epochs):
+def train(train_loader, val_loader, model, optimizer, criterion, num_epochs, scheduler):
     for epoch in range(num_epochs):
         model.train()
         train_loss = 0.0
@@ -157,8 +158,9 @@ def train(train_loader, val_loader, model, optimizer, criterion, num_epochs):
             all_preds.extend(preds.cpu().numpy())
             all_labels.extend(labels.cpu().numpy())
 
+        scheduler.step()
         epoch_loss = train_loss / len(train_loader.dataset)
-        print(f'Epoch {epoch+1}/{num_epochs}, Training Loss: {epoch_loss:.4f}')
+        print(f"Epoch {epoch+1}, Loss: {epoch_loss}, LR: {scheduler.get_last_lr()}")
         print('Training Classification Report:')
         print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
         plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Training Confusion Matrix Epoch {epoch+1}', cm_filename=f'training_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'training_baseline_report_epoch_{epoch+1}.txt')
@@ -306,29 +308,30 @@ def main():
 
     # weights = R2Plus1D_18_Weights.DEFAULT
     # self_supervised_model  = r2plus1d_18(weights=weights)
-    # self_supervised_model.fc = nn.Identity()
+    self_supervised_model.fc = nn.Identity()
 
     # Freeze all layers of the pre-trained model
     # for param in self_supervised_model.parameters():
     #     param.requires_grad = False
 
     # Add a linear layer on top for the classification task
-    # num_ftrs = 512 #self_supervised_model.fc.in_features
-    # self_supervised_model.fc = nn.Linear(num_ftrs, 2)  # Assuming binary classification
+    num_ftrs = 512 #self_supervised_model.fc.in_features
+    self_supervised_model.fc = nn.Linear(num_ftrs, 2)  # Assuming binary classification
 
     # self_supervised_model = Inception3D(num_classes=2).cuda()
 
     self_supervised_model = self_supervised_model.to(device)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(self_supervised_model.fc.parameters(), lr=0.1, momentum=0.9)
+    optimizer = optim.SGD(self_supervised_model.parameters(), lr=0.001, momentum=0.9)
+    scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
 
     # if 'optimizer_state_dict' in checkpoint:
     #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     # Train and evaluate the model
 
-    train(train_loader=train_loader, val_loader=val_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=20)
+    train(train_loader=train_loader, val_loader=val_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, scheduler=scheduler, num_epochs=3)
     # test(test_loader=test_loader, model=self_supervised_model, criterion=criterion)
     # Save the trained model
     # torch.save(self_supervised_model.state_dict(), 'linear_eval_model.pth')
