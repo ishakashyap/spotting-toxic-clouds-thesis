@@ -163,7 +163,7 @@ def train(train_loader, val_loader, model, optimizer, criterion, num_epochs, sch
         print(f"Epoch {epoch+1}, Loss: {epoch_loss}, LR: {scheduler.get_last_lr()}")
         print('Training Classification Report:')
         print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
-        plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Training Confusion Matrix Epoch {epoch+1}', cm_filename=f'training_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'training_baseline_report_epoch_{epoch+1}.txt')
+        # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Training Confusion Matrix Epoch {epoch+1}', cm_filename=f'training_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'training_baseline_report_epoch_{epoch+1}.txt')
 
         model.eval()
         val_loss = 0.0
@@ -188,7 +188,7 @@ def train(train_loader, val_loader, model, optimizer, criterion, num_epochs, sch
         print(f'Epoch {epoch+1}/{num_epochs}, Validation Loss: {epoch_loss:.4f}')
         print('Validation Classification Report:')
         print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
-        plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Validation Confusion Matrix Epoch {epoch+1}', cm_filename=f'validation_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'validation_baseline_report_epoch_{epoch+1}.txt')
+        # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Validation Confusion Matrix Epoch {epoch+1}', cm_filename=f'validation_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'validation_baseline_report_epoch_{epoch+1}.txt')
 
 def test(test_loader, model, criterion):
     model.eval()
@@ -214,9 +214,9 @@ def test(test_loader, model, criterion):
     print(f'Test Loss: {epoch_loss:.4f}')
     print('Test Classification Report:')
     print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
-    plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title='Test Confusion Matrix', cm_filename='test_confusion_matrix.png', cr_filename='test_baseline_report.txt')
+    # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title='Test Confusion Matrix', cm_filename='test_confusion_matrix.png', cr_filename='test_baseline_report.txt')
 
-def test_model(model, dataloader, criterion):
+def test_model(model, dataloader, scheduler, criterion):
     model.eval()
     running_loss = 0.0
     running_corrects = 0
@@ -246,7 +246,7 @@ def test_model(model, dataloader, criterion):
     test_clf_report = classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1'])
     print('Classification Report: ', test_clf_report)
     # print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
-    plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title='Test Confusion Matrix', filename='./test_conf.png')
+    # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title='Test Confusion Matrix', filename='./test_conf.png')
 
     with open(f'./test_clf_report.txt', 'w') as f:
                 f.write(test_clf_report)
@@ -332,9 +332,9 @@ def main():
     # Train and evaluate the model
 
     train(train_loader=train_loader, val_loader=val_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, scheduler=scheduler, num_epochs=20)
-    # test(test_loader=test_loader, model=self_supervised_model, criterion=criterion)
+    test(test_loader=test_loader, model=self_supervised_model, criterion=criterion)
     # Save the trained model
-    # torch.save(self_supervised_model.state_dict(), 'linear_eval_model.pth')
+    torch.save(self_supervised_model.state_dict(), 'baseline_model.pth')
 
 if __name__ == "__main__":
     main()
