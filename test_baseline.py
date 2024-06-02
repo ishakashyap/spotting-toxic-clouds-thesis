@@ -135,7 +135,7 @@ def plot_confusion_matrix(y_true, y_pred, classes, title='Confusion matrix', cm_
     with open(cr_filename, 'w') as f:
         f.write(report)
 
-def train(train_loader, val_loader, model, optimizer, criterion, num_epochs, scheduler):
+def train(train_loader, val_loader, test_loader, model, optimizer, criterion, num_epochs, scheduler):
     for epoch in range(num_epochs):
         model.train()
         train_loss = 0.0
@@ -189,6 +189,8 @@ def train(train_loader, val_loader, model, optimizer, criterion, num_epochs, sch
         print('Validation Classification Report:')
         print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
         # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Validation Confusion Matrix Epoch {epoch+1}', cm_filename=f'validation_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'validation_baseline_report_epoch_{epoch+1}.txt')
+
+        test(test_loader=test_loader, model=model, criterion=criterion)
 
 def test(test_loader, model, criterion):
     model.eval()
@@ -330,9 +332,7 @@ def main():
     #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     # Train and evaluate the model
-
-    train(train_loader=train_loader, val_loader=val_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, scheduler=scheduler, num_epochs=20)
-    test(test_loader=test_loader, model=self_supervised_model, criterion=criterion)
+    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, scheduler=scheduler, num_epochs=20)
     # Save the trained model
     torch.save(self_supervised_model.state_dict(), 'baseline_model.pth')
 
