@@ -22,7 +22,7 @@ from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, Ea
 
 class SimCLRVideo(pl.LightningModule):
 
-    def __init__(self, hidden_dim, lr, temperature, weight_decay, max_epochs=5, num_classes=2):
+    def __init__(self, hidden_dim, lr, temperature, weight_decay, max_epochs=50, num_classes=2):
         super().__init__()
         self.save_hyperparameters()
         assert self.hparams.temperature > 0.0, 'The temperature must be a positive float!'
@@ -58,12 +58,12 @@ class SimCLRVideo(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
+        # TODO: Remove or utilize lr scheduler
         lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.hparams.max_epochs, eta_min=self.hparams.lr / 50)
         return [optimizer], [lr_scheduler]
     
     def info_nce_loss(self, projections, mode='train'):
         # Calculate cosine similarity
-        # Try other similariy majors or other loss func
         cos_sim = nn.functional.cosine_similarity(projections[:, None, :], projections[None, :, :], dim=-1)
         # Mask out cosine similarity to itself
         self_mask = torch.eye(cos_sim.shape[0], dtype=torch.bool, device=cos_sim.device)
@@ -171,8 +171,8 @@ if __name__ == '__main__':
             Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
         
-        train_folder = "./train_full"
-        label_folder = "./metadata_02242020.json"
+        train_folder = "./full_dataset"
+        label_folder = "./metadata_12012023.json"
         dataset = SimCLRDataset(train_folder, transform=train_transforms)
         train_loader = DataLoader(dataset, batch_size=8, shuffle=True, num_workers=7, persistent_workers=True)
 
@@ -195,12 +195,12 @@ if __name__ == '__main__':
 
         # Update to the correct class name and pass necessary initialization arguments
         # else:
-        model = SimCLRVideo(hidden_dim=224, lr=1e-3, temperature=0.07, weight_decay=1e-4, max_epochs=5)
+        model = SimCLRVideo(hidden_dim=224, lr=1e-3, temperature=0.07, weight_decay=1e-4, max_epochs=50)
         # optimizer = optim.Adam(model.parameters(), lr=1e-2)
-        trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, 'SimCLR_full_data.pth'),
+        trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, 'test_full_data.pth'),
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
         # devices=1 if torch.cuda.is_available() else None,  # Adjust as per your setup
-        max_epochs=5,
+        max_epochs=50,
         callbacks=[
             ModelCheckpoint(save_weights_only=True, mode='min', monitor='train_loss'),
             LearningRateMonitor('epoch'), early_stop], log_every_n_steps=2)
@@ -211,6 +211,6 @@ if __name__ == '__main__':
         torch.save({
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
-        }, 'SimCLR_full_data.pth')
+        }, 'test_full_data.pth')
 
         print('Training complete')
