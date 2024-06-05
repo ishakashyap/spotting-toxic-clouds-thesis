@@ -325,14 +325,14 @@ def main():
     self_supervised_model = self_supervised_model.to(device)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(self_supervised_model.parameters(), lr=0.001, momentum=0.9)
+    optimizer = optim.SGD(self_supervised_model.parameters(), lr=0.001, momentum=0.9, weight_decay=1e-4)
     scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
 
     # if 'optimizer_state_dict' in checkpoint:
     #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     # Train and evaluate the model
-    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, scheduler=scheduler, num_epochs=20)
+    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, scheduler=scheduler, num_epochs=5)
     # Save the trained model
     torch.save(self_supervised_model.state_dict(), 'baseline_model.pth')
 
