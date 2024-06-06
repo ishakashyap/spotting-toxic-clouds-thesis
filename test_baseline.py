@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
 from i3d_model import Inception3D
-from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import StepLR, ReduceLROnPlateau
 from torchvision.io import read_video
 from torchvision import transforms, models
 from torch.utils.data import DataLoader, Dataset
@@ -158,7 +158,6 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
             all_preds.extend(preds.cpu().numpy())
             all_labels.extend(labels.cpu().numpy())
 
-        scheduler.step()
         epoch_loss = train_loss / len(train_loader.dataset)
         print(f"Epoch {epoch+1}, Loss: {epoch_loss}, LR: {scheduler.get_last_lr()}")
         print('Training Classification Report:')
@@ -183,7 +182,8 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
                 preds = torch.argmax(outputs, dim=1)
                 all_preds.extend(preds.cpu().numpy())
                 all_labels.extend(labels.cpu().numpy())
-
+            
+        scheduler.step(val_loss)
         epoch_loss = val_loss / len(val_loader.dataset)
         print(f'Epoch {epoch+1}/{num_epochs}, Validation Loss: {epoch_loss:.4f}')
         print('Validation Classification Report:')
@@ -308,25 +308,38 @@ def main():
     weights = R3D_18_Weights.DEFAULT
     self_supervised_model  = r3d_18(weights=weights)
 
+
     # weights = R2Plus1D_18_Weights.DEFAULT
     # self_supervised_model  = r2plus1d_18(weights=weights)
-    self_supervised_model.fc = nn.Identity()
+    # self_supervised_model.fc = nn.Identity()
 
     # Freeze all layers of the pre-trained model
     # for param in self_supervised_model.parameters():
     #     param.requires_grad = False
 
     # Add a linear layer on top for the classification task
-    num_ftrs = 512 #self_supervised_model.fc.in_features
-    self_supervised_model.fc = nn.Linear(num_ftrs, 2)  # Assuming binary classification
+    # num_ftrs = 512 #self_supervised_model.fc.in_features
+    # self_supervised_model.fc = nn.Linear(num_ftrs, 2)  # Assuming binary classification
 
     # self_supervised_model = Inception3D(num_classes=2).cuda()
+    # Remove the final fully connected layer
+    self_supervised_model.fc = nn.Identity()
+
+    # Add new fully connected layers with dropout
+    num_features = self_supervised_model.fc.in_features if hasattr(self_supervised_model.fc, 'in_features') else 512
+    self_supervised_model.fc = nn.Sequential(
+    nn.Dropout(p=0.5),
+    nn.Linear(num_features, 256),  # First linear layer from 512 to 256
+    nn.ReLU(),
+    nn.Dropout(p=0.5),
+    nn.Linear(256, 2)  # Second linear layer from 256 to 2 classes
+    )
 
     self_supervised_model = self_supervised_model.to(device)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(self_supervised_model.parameters(), lr=0.001, momentum=0.9, weight_decay=1e-4)
-    scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
+    scheduler = ReduceLROnPlateau(optimizer, mode='min')
 
     # if 'optimizer_state_dict' in checkpoint:
     #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
@@ -334,7 +347,7 @@ def main():
     # Train and evaluate the model
     train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, scheduler=scheduler, num_epochs=5)
     # Save the trained model
-    torch.save(self_supervised_model.state_dict(), 'baseline_model.pth')
+    torch.save(self_supervised_model.state_dict(), 'baseline_model_testdropout.pth')
 
 if __name__ == "__main__":
     main()
