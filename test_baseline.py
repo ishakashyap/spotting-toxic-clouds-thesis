@@ -339,7 +339,8 @@ def main():
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(self_supervised_model.parameters(), lr=0.001, momentum=0.9, weight_decay=1e-4)
-    scheduler = ReduceLROnPlateau(optimizer, mode='min')
+    # scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=, eta_min=)
+    scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
 
     # if 'optimizer_state_dict' in checkpoint:
     #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
