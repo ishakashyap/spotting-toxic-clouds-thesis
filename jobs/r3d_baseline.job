@@ -5,7 +5,7 @@
 #SBATCH --job-name=r3d_model
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
-#SBATCH --time=2:15:00
+#SBATCH --time=1:30:00
 #SBATCH --output=jobs/outputs/r3d_baseline_dropout.out
 
 cd /projects/0/prjs0935/spotting-toxic-clouds-thesis
