@@ -1,0 +1,17 @@
+#!/bin/bash
+
+#SBATCH --partition=gpu
+#SBATCH --gpus=4
+#SBATCH --job-name=i3d_model
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=32
+#SBATCH --time=2:00:00
+#SBATCH --output=jobs/outputs/i3d_baseline.out
+
+cd /projects/0/prjs0935/spotting-toxic-clouds-thesis
+module load 2022
+module load Anaconda3/2022.05
+
+source activate dl2023
+git pull origin main
+srun python test_baseline.py
