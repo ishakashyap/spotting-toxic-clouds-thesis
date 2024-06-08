@@ -158,7 +158,6 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
             all_preds.extend(preds.cpu().numpy())
             all_labels.extend(labels.cpu().numpy())
 
-        scheduler.step()
         epoch_loss = train_loss / len(train_loader.dataset)
         # current_lr = scheduler.get_last_lr()
         current_lr = optimizer.param_groups[0]['lr']
@@ -187,6 +186,7 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
                 all_labels.extend(labels.cpu().numpy())
             
         epoch_loss = val_loss / len(val_loader.dataset)
+        scheduler.step(epoch_loss)
         print(f'Epoch {epoch+1}/{num_epochs}, Validation Loss: {epoch_loss:.4f}')
         print('Validation Classification Report:')
         print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
