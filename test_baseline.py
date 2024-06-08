@@ -160,7 +160,8 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
 
         scheduler.step()
         epoch_loss = train_loss / len(train_loader.dataset)
-        print(f"Epoch {epoch+1}, Loss: {epoch_loss}, LR: {scheduler.get_last_lr()}")
+        current_lr = scheduler.get_last_lr()[0]
+        print(f"Epoch {epoch+1}, Loss: {epoch_loss}, LR: {current_lr}")
         print('Training Classification Report:')
         print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
         # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Training Confusion Matrix Epoch {epoch+1}', cm_filename=f'training_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'training_baseline_report_epoch_{epoch+1}.txt')
@@ -338,9 +339,9 @@ def main():
     self_supervised_model = self_supervised_model.to(device)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(self_supervised_model.parameters(), lr=0.001, momentum=0.9, weight_decay=1e-4)
-    # scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=, eta_min=)
-    scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
+    optimizer = optim.SGD(self_supervised_model.parameters(), lr=1e-3, momentum=0.9, weight_decay=1e-3)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=5, eta_min=1e-5)
+    # scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
 
     # if 'optimizer_state_dict' in checkpoint:
     #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
