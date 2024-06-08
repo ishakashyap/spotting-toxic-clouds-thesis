@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
 from i3d_model import Inception3D
-from torch.optim.lr_scheduler import StepLR, ReduceLROnPlateau
+from torch.optim.lr_scheduler import StepLR, ReduceLROnPlateau, CosineAnnealingLR
 from torchvision.io import read_video
 from torchvision import transforms, models
 from torch.utils.data import DataLoader, Dataset
@@ -160,7 +160,8 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
 
         scheduler.step()
         epoch_loss = train_loss / len(train_loader.dataset)
-        current_lr = scheduler.get_last_lr()[0]
+        # current_lr = scheduler.get_last_lr()
+        current_lr = optimizer.param_groups[0]['lr']
         print(f"Epoch {epoch+1}, Loss: {epoch_loss}, LR: {current_lr}")
         print('Training Classification Report:')
         print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
@@ -219,56 +220,59 @@ def test(test_loader, model, criterion):
     print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
     # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title='Test Confusion Matrix', cm_filename='test_confusion_matrix.png', cr_filename='test_baseline_report.txt')
 
-def test_model(model, dataloader, scheduler, criterion):
-    model.eval()
-    running_loss = 0.0
-    running_corrects = 0
-    all_preds = []
-    all_labels = []
+# def test_model(model, dataloader, scheduler, criterion):
+#     model.eval()
+#     running_loss = 0.0
+#     running_corrects = 0
+#     all_preds = []
+#     all_labels = []
 
-    with torch.no_grad():
-        for inputs, labels in dataloader:
-            inputs = inputs.cuda()
-            labels = labels.cuda()
+#     with torch.no_grad():
+#         for inputs, labels in dataloader:
+#             inputs = inputs.cuda()
+#             labels = labels.cuda()
 
-            outputs = model(inputs)
-            _, preds = torch.max(outputs, 1)
-            loss = criterion(outputs, labels)
+#             outputs = model(inputs)
+#             _, preds = torch.max(outputs, 1)
+#             loss = criterion(outputs, labels)
 
-            running_loss += loss.item() * inputs.size(0)
-            running_corrects += torch.sum(preds == labels.data)
+#             running_loss += loss.item() * inputs.size(0)
+#             running_corrects += torch.sum(preds == labels.data)
 
-            all_preds.extend(preds.cpu().numpy())
-            all_labels.extend(labels.cpu().numpy())
+#             all_preds.extend(preds.cpu().numpy())
+#             all_labels.extend(labels.cpu().numpy())
 
-    epoch_loss = running_loss / len(dataloader.dataset)
-    epoch_acc = running_corrects.double() / len(dataloader.dataset)
-    epoch_f1 = f1_score(all_labels, all_preds)
+#     epoch_loss = running_loss / len(dataloader.dataset)
+#     epoch_acc = running_corrects.double() / len(dataloader.dataset)
+#     epoch_f1 = f1_score(all_labels, all_preds)
     
-    print(f'Test Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f} F1: {epoch_f1:.4f}')
-    test_clf_report = classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1'])
-    print('Classification Report: ', test_clf_report)
-    # print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
-    # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title='Test Confusion Matrix', filename='./test_conf.png')
+#     print(f'Test Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f} F1: {epoch_f1:.4f}')
+#     test_clf_report = classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1'])
+#     print('Classification Report: ', test_clf_report)
+#     # print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
+#     # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title='Test Confusion Matrix', filename='./test_conf.png')
 
-    with open(f'./test_clf_report.txt', 'w') as f:
-                f.write(test_clf_report)
+#     with open(f'./test_clf_report.txt', 'w') as f:
+#                 f.write(test_clf_report)
 
-def extract_labels_from_dataset(dataset):
-    all_labels = []
-    for idx in range(len(dataset)):
-        _, label = dataset[idx]
-        if label is not None:
-            all_labels.append(label.item())
-    return all_labels
+# def extract_labels_from_dataset(dataset):
+#     all_labels = []
+#     for idx in range(len(dataset)):
+#         _, label = dataset[idx]
+#         if label is not None:
+#             all_labels.append(label.item())
+#     return all_labels
 
 def main():
 
     train_transforms = transforms.Compose([
         transforms.Resize(224), 
+        # Blur
         transforms.RandomApply([transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.5),
+        # Color
         transforms.RandomApply([transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.1)], p=0.8),
         transforms.RandomGrayscale(p=0.2),
+        # Dimension
         transforms.RandomHorizontalFlip(), 
         transforms.RandomRotation(degrees=15),
         transforms.CenterCrop(224),
@@ -339,17 +343,17 @@ def main():
     self_supervised_model = self_supervised_model.to(device)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(self_supervised_model.parameters(), lr=1e-3, momentum=0.9, weight_decay=1e-3)
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=5, eta_min=1e-5)
+    optimizer = optim.SGD(self_supervised_model.parameters(), lr=1e-3, momentum=0.9, weight_decay=1e-4)
+    scheduler = ReduceLROnPlateau(self_supervised_model.parameters(), mode='min')
     # scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
 
     # if 'optimizer_state_dict' in checkpoint:
     #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     # Train and evaluate the model
-    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, scheduler=scheduler, num_epochs=5)
+    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, scheduler=scheduler, num_epochs=15)
     # Save the trained model
-    torch.save(self_supervised_model.state_dict(), 'baseline_model_testdropout.pth')
+    torch.save(self_supervised_model.state_dict(), 'baseline_model_plateau.pth')
 
 if __name__ == "__main__":
     main()
