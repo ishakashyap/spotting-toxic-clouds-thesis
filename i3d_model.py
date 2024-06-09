@@ -48,18 +48,18 @@ class Inception3D(nn.Module):
         self.maxpool3 = nn.MaxPool3d(kernel_size=3, stride=2, padding=1)
         
         self.inception4a = Inception3DModule(480, [192, 96, 208, 16, 48, 64])
-        self.inception4b = Inception3DModule(512, [160, 112, 224, 24, 64, 64])
-        self.inception4c = Inception3DModule(512, [128, 128, 256, 24, 64, 64])
-        self.inception4d = Inception3DModule(512, [112, 144, 288, 32, 64, 64])
-        self.inception4e = Inception3DModule(528, [256, 160, 320, 32, 128, 128])
-        self.maxpool4 = nn.MaxPool3d(kernel_size=2, stride=2, padding=1)
+        # self.inception4b = Inception3DModule(512, [160, 112, 224, 24, 64, 64])
+        # self.inception4c = Inception3DModule(512, [128, 128, 256, 24, 64, 64])
+        # self.inception4d = Inception3DModule(512, [112, 144, 288, 32, 64, 64])
+        # self.inception4e = Inception3DModule(528, [256, 160, 320, 32, 128, 128])
+        # self.maxpool4 = nn.MaxPool3d(kernel_size=2, stride=2, padding=1)
         
-        self.inception5a = Inception3DModule(832, [256, 160, 320, 32, 128, 128])
-        self.inception5b = Inception3DModule(832, [384, 192, 384, 48, 128, 128])
+        # self.inception5a = Inception3DModule(832, [256, 160, 320, 32, 128, 128])
+        # self.inception5b = Inception3DModule(832, [384, 192, 384, 48, 128, 128])
         
         self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
         self.dropout = nn.Dropout(0.4)
-        self.fc = nn.Linear(1024, num_classes)
+        self.fc = nn.Linear(512, num_classes)
         
     def forward(self, x):
         x = self.conv1(x)
@@ -73,14 +73,14 @@ class Inception3D(nn.Module):
         x = self.maxpool3(x)
         
         x = self.inception4a(x)
-        x = self.inception4b(x)
-        x = self.inception4c(x)
-        x = self.inception4d(x)
-        x = self.inception4e(x)
-        x = self.maxpool4(x)
+        # x = self.inception4b(x)
+        # x = self.inception4c(x)
+        # x = self.inception4d(x)
+        # x = self.inception4e(x)
+        # x = self.maxpool4(x)
         
-        x = self.inception5a(x)
-        x = self.inception5b(x)
+        # x = self.inception5a(x)
+        # x = self.inception5b(x)
         
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
