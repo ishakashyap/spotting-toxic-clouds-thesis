@@ -135,7 +135,7 @@ def plot_confusion_matrix(y_true, y_pred, classes, title='Confusion matrix', cm_
     with open(cr_filename, 'w') as f:
         f.write(report)
 
-def train(train_loader, val_loader, test_loader, model, optimizer, criterion, num_epochs):
+def train(train_loader, val_loader, test_loader, model, optimizer, criterion, num_epochs, scheduler):
     for epoch in range(num_epochs):
         model.train()
         train_loss = 0.0
@@ -161,7 +161,7 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
         epoch_loss = train_loss / len(train_loader.dataset)
         # current_lr = scheduler.get_last_lr()
         current_lr = optimizer.param_groups[0]['lr']
-        print(f"Epoch {epoch+1}, Loss: {epoch_loss}") # , LR: {current_lr}
+        print(f"Epoch {epoch+1}, Loss: {epoch_loss}, LR: {current_lr}")
         print('Training Classification Report:')
         print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
         # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Training Confusion Matrix Epoch {epoch+1}', cm_filename=f'training_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'training_baseline_report_epoch_{epoch+1}.txt')
@@ -186,7 +186,7 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
                 all_labels.extend(labels.cpu().numpy())
             
         epoch_loss = val_loss / len(val_loader.dataset)
-        # scheduler.step(epoch_loss)
+        scheduler.step(epoch_loss)
         print(f'Epoch {epoch+1}/{num_epochs}, Validation Loss: {epoch_loss:.4f}')
         print('Validation Classification Report:')
         print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
@@ -310,12 +310,12 @@ def main():
     
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    # weights = R3D_18_Weights.DEFAULT
-    # self_supervised_model  = r3d_18(weights=weights)
+    weights = R3D_18_Weights.DEFAULT
+    self_supervised_model  = r3d_18(weights=weights)
 
 
-    weights = R2Plus1D_18_Weights.DEFAULT
-    self_supervised_model  = r2plus1d_18(weights=weights)
+    # weights = R2Plus1D_18_Weights.DEFAULT
+    # self_supervised_model  = r2plus1d_18(weights=weights)
     self_supervised_model.fc = nn.Identity()
 
     # Freeze all layers of the pre-trained model
@@ -332,28 +332,28 @@ def main():
     # Remove the final fully connected layer
     # self_supervised_model.fc = nn.Identity()
 
-    # # Add new fully connected layers with dropout
-    # num_features = self_supervised_model.fc.in_features if hasattr(self_supervised_model.fc, 'in_features') else 512
-    # self_supervised_model.fc = nn.Sequential(
-    # nn.Dropout(p=0.5),
-    # nn.Linear(num_features, 256),  # First linear layer from 512 to 256
-    # nn.ReLU(),
-    # nn.Dropout(p=0.5),
-    # nn.Linear(256, 2)  # Second linear layer from 256 to 2 classes
-    # )
+    # Add new fully connected layers with dropout
+    num_features = self_supervised_model.fc.in_features if hasattr(self_supervised_model.fc, 'in_features') else 512
+    self_supervised_model.fc = nn.Sequential(
+    nn.Dropout(p=0.5),
+    nn.Linear(num_features, 256),  # First linear layer from 512 to 256
+    nn.ReLU(),
+    nn.Dropout(p=0.5),
+    nn.Linear(256, 2)  # Second linear layer from 256 to 2 classes
+    )
 
     self_supervised_model = self_supervised_model.to(device)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(self_supervised_model.parameters(), lr=1e-3, momentum=0.9, weight_decay=1e-4)
-    # scheduler = ReduceLROnPlateau(optimizer, mode='min')
+    scheduler = ReduceLROnPlateau(optimizer, mode='min')
     # scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
 
     # if 'optimizer_state_dict' in checkpoint:
     #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     # Train and evaluate the model
-    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=5)
+    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=20, scheduler=scheduler)
     # Save the trained model
     # torch.save(self_supervised_model.state_dict(), 'baseline_model_plateau.pth')
 
