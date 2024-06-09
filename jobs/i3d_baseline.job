@@ -13,5 +13,4 @@ module load 2022
 module load Anaconda3/2022.05
 
 source activate dl2023
-git pull origin main
 srun python test_baseline.py

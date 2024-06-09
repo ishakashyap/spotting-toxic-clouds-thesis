@@ -327,8 +327,8 @@ def main():
     # self_supervised_model.fc = nn.Linear(num_ftrs, 2)  # Assuming binary classification
 
     self_supervised_model = Inception3D(num_classes=2).cuda()
-    self_supervised_model.fc = nn.Identity()
-    self_supervised_model.fc = nn.Linear(512, 2)
+    # self_supervised_model.fc = nn.Identity()
+    # self_supervised_model.fc = nn.Linear(512, 2)
     # Remove the final fully connected layer
     # self_supervised_model.fc = nn.Identity()
 
