@@ -2,7 +2,7 @@
 
 #SBATCH --partition=gpu
 #SBATCH --gpus=4
-#SBATCH --job-name=r2+1d_model
+#SBATCH --job-name=r21d_model
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
 #SBATCH --time=2:00:00
