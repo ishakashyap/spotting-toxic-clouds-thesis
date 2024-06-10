@@ -11,6 +11,7 @@ from torchvision.io import read_video
 from torchvision import transforms, models
 from torch.utils.data import DataLoader, Dataset
 from torchvision.transforms import functional as F
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from torchvision.models.video import r3d_18, R3D_18_Weights,  r2plus1d_18, R2Plus1D_18_Weights
 from sklearn.metrics import classification_report, f1_score, confusion_matrix
 
@@ -135,7 +136,10 @@ def plot_confusion_matrix(y_true, y_pred, classes, title='Confusion matrix', cm_
     with open(cr_filename, 'w') as f:
         f.write(report)
 
-def train(train_loader, val_loader, test_loader, model, optimizer, criterion, num_epochs, scheduler):
+def train(train_loader, val_loader, test_loader, model, optimizer, criterion, num_epochs, scheduler, patience=3, min_delta=0.001):
+    best_val_loss = np.inf
+    epochs_without_improvement = 0
+
     for epoch in range(num_epochs):
         model.train()
         train_loss = 0.0
@@ -185,16 +189,27 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
                 all_preds.extend(preds.cpu().numpy())
                 all_labels.extend(labels.cpu().numpy())
             
-        epoch_loss = val_loss / len(val_loader.dataset)
-        scheduler.step(epoch_loss)
-        print(f'Epoch {epoch+1}/{num_epochs}, Validation Loss: {epoch_loss:.4f}')
+        epoch_val_loss = val_loss / len(val_loader.dataset)
+        scheduler.step(epoch_val_loss)
+        print(f'Epoch {epoch+1}/{num_epochs}, Validation Loss: {epoch_val_loss:.4f}')
         print('Validation Classification Report:')
         print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
         # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Validation Confusion Matrix Epoch {epoch+1}', cm_filename=f'validation_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'validation_baseline_report_epoch_{epoch+1}.txt')
 
-        test(test_loader=test_loader, model=model, criterion=criterion)
+        test(test_loader=test_loader, model=model, criterion=criterion, epoch=epoch, num_epochs=num_epochs)
 
-def test(test_loader, model, criterion):
+        # Early stopping check
+        if epoch_val_loss < best_val_loss - min_delta:
+            best_val_loss = epoch_val_loss
+            epochs_without_improvement = 0
+        else:
+            epochs_without_improvement += 1
+
+        if epochs_without_improvement >= patience:
+            print(f"Early stopping triggered after {epoch+1} epochs.")
+            break
+
+def test(test_loader, model, criterion, epoch, num_epochs):
     model.eval()
     test_loss = 0.0
     all_preds = []
@@ -216,7 +231,7 @@ def test(test_loader, model, criterion):
 
     epoch_loss = test_loss / len(test_loader.dataset)
     print(f'Test Loss: {epoch_loss:.4f}')
-    print('Test Classification Report:')
+    print(f'Epoch{epoch  +1}/{num_epochs}, Test Classification Report:')
     print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
     # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title='Test Confusion Matrix', cm_filename='test_confusion_matrix.png', cr_filename='test_baseline_report.txt')
 
@@ -287,13 +302,13 @@ def main():
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
     
-    train_folder = "./train_baseline"
+    train_folder = "./train_set"
     train_label_folder = "./split/metadata_train_split_by_date.json"
 
-    val_folder = "./validation_baseline"
+    val_folder = "./validation_set"
     val_label_folder = "./split/metadata_validation_split_by_date.json"
 
-    test_folder = "./test_baseline"
+    test_folder = "./test_set"
     test_label_folder = "./split/metadata_test_split_by_date.json"
 
     train_dataset = VideoDataset(train_folder, train_label_folder, transform=train_transforms)
@@ -337,10 +352,12 @@ def main():
     self_supervised_model.fc = nn.Sequential(
     nn.Dropout(p=0.5),
     nn.Linear(num_features, 256),  # First linear layer from 512 to 256
+    nn.BatchNorm1d(256),
     nn.ReLU(),
     nn.Dropout(p=0.5),
     nn.Linear(256, 2)  # Second linear layer from 256 to 2 classes
     )
+
 
     self_supervised_model = self_supervised_model.to(device)
 
@@ -353,7 +370,7 @@ def main():
     #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     # Train and evaluate the model
-    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=20, scheduler=scheduler)
+    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=20, scheduler=scheduler, patience=5, min_delta=0.001)
     # Save the trained model
     # torch.save(self_supervised_model.state_dict(), 'baseline_model_plateau.pth')
 
