@@ -322,6 +322,8 @@ def main():
     train_loader = DataLoader(train_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
     val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
     test_loader = DataLoader(test_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
+
+    print("Videos are loaded!")
     
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
