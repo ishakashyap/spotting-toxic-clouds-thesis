@@ -136,78 +136,81 @@ def plot_confusion_matrix(y_true, y_pred, classes, title='Confusion matrix', cm_
     with open(cr_filename, 'w') as f:
         f.write(report)
 
-def train(train_loader, val_loader, test_loader, model, optimizer, criterion, num_epochs, scheduler, patience=3, min_delta=0.001):
-    best_val_loss = np.inf
-    epochs_without_improvement = 0
+def train(train_loader, val_loader, test_loader, model, optimizer, criterion, num_epochs, scheduler): # , patience=3, min_delta=0.001
+    # best_val_loss = np.inf
+    # epochs_without_improvement = 0
+    try:
+        for epoch in range(num_epochs):
+            model.train()
+            train_loss = 0.0
+            all_preds = []
+            all_labels = []
 
-    for epoch in range(num_epochs):
-        model.train()
-        train_loss = 0.0
-        all_preds = []
-        all_labels = []
-
-        for views, labels in train_loader:
-            if views is None or labels is None:
-                continue
-
-            views, labels = views.cuda(), labels.cuda()
-            optimizer.zero_grad()
-            outputs = model(views)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
-            train_loss += loss.item() * views.size(0)
-
-            preds = torch.argmax(outputs, dim=1)
-            all_preds.extend(preds.cpu().numpy())
-            all_labels.extend(labels.cpu().numpy())
-
-        epoch_loss = train_loss / len(train_loader.dataset)
-        # current_lr = scheduler.get_last_lr()
-        current_lr = optimizer.param_groups[0]['lr']
-        print(f"Epoch {epoch+1}, Loss: {epoch_loss}, LR: {current_lr}")
-        print('Training Classification Report:')
-        print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
-        # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Training Confusion Matrix Epoch {epoch+1}', cm_filename=f'training_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'training_baseline_report_epoch_{epoch+1}.txt')
-
-        model.eval()
-        val_loss = 0.0
-        all_preds = []
-        all_labels = []
-
-        with torch.no_grad():
-            for views, labels in val_loader:
+            for views, labels in train_loader:
                 if views is None or labels is None:
                     continue
 
                 views, labels = views.cuda(), labels.cuda()
+                optimizer.zero_grad()
                 outputs = model(views)
                 loss = criterion(outputs, labels)
-                val_loss += loss.item() * views.size(0)
+                loss.backward()
+                optimizer.step()
+                train_loss += loss.item() * views.size(0)
 
                 preds = torch.argmax(outputs, dim=1)
                 all_preds.extend(preds.cpu().numpy())
                 all_labels.extend(labels.cpu().numpy())
-            
-        epoch_val_loss = val_loss / len(val_loader.dataset)
-        scheduler.step(epoch_val_loss)
-        print(f'Epoch {epoch+1}/{num_epochs}, Validation Loss: {epoch_val_loss:.4f}')
-        print('Validation Classification Report:')
-        print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
-        # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Validation Confusion Matrix Epoch {epoch+1}', cm_filename=f'validation_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'validation_baseline_report_epoch_{epoch+1}.txt')
 
-        test(test_loader=test_loader, model=model, criterion=criterion, epoch=epoch, num_epochs=num_epochs)
+            epoch_loss = train_loss / len(train_loader.dataset)
+            # current_lr = scheduler.get_last_lr()
+            current_lr = optimizer.param_groups[0]['lr']
+            print(f"Epoch {epoch+1}, Loss: {epoch_loss}, LR: {current_lr}")
+            print('Training Classification Report:')
+            print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
+            # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Training Confusion Matrix Epoch {epoch+1}', cm_filename=f'training_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'training_baseline_report_epoch_{epoch+1}.txt')
+
+            model.eval()
+            val_loss = 0.0
+            all_preds = []
+            all_labels = []
+
+            with torch.no_grad():
+                for views, labels in val_loader:
+                    if views is None or labels is None:
+                        continue
+
+                    views, labels = views.cuda(), labels.cuda()
+                    outputs = model(views)
+                    loss = criterion(outputs, labels)
+                    val_loss += loss.item() * views.size(0)
+
+                    preds = torch.argmax(outputs, dim=1)
+                    all_preds.extend(preds.cpu().numpy())
+                    all_labels.extend(labels.cpu().numpy())
+                
+            epoch_val_loss = val_loss / len(val_loader.dataset)
+            scheduler.step(epoch_val_loss)
+            print(f'Epoch {epoch+1}/{num_epochs}, Validation Loss: {epoch_val_loss:.4f}')
+            print('Validation Classification Report:')
+            print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
+            # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Validation Confusion Matrix Epoch {epoch+1}', cm_filename=f'validation_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'validation_baseline_report_epoch_{epoch+1}.txt')
+
+            test(test_loader=test_loader, model=model, criterion=criterion, epoch=epoch, num_epochs=num_epochs)
+        
+    except Exception as e:
+        print('Error occurred during training or validation: ', e)
 
         # Early stopping check
-        if epoch_val_loss < best_val_loss - min_delta:
-            best_val_loss = epoch_val_loss
-            epochs_without_improvement = 0
-        else:
-            epochs_without_improvement += 1
+        # if epoch_val_loss < best_val_loss - min_delta:
+        #     best_val_loss = epoch_val_loss
+        #     epochs_without_improvement = 0
+        # else:
+        #     epochs_without_improvement += 1
 
-        if epochs_without_improvement >= patience:
-            print(f"Early stopping triggered after {epoch+1} epochs.")
-            break
+        # if epochs_without_improvement >= patience:
+        #     print(f"Early stopping triggered after {epoch+1} epochs.")
+        #     break
 
 def test(test_loader, model, criterion, epoch, num_epochs):
     model.eval()
@@ -215,24 +218,28 @@ def test(test_loader, model, criterion, epoch, num_epochs):
     all_preds = []
     all_labels = []
 
-    with torch.no_grad():
-        for views, labels in test_loader:
-            if views is None or labels is None:
-                continue
+    try:
+        with torch.no_grad():
+            for views, labels in test_loader:
+                if views is None or labels is None:
+                    continue
 
-            views, labels = views.cuda(), labels.cuda()
-            outputs = model(views)
-            loss = criterion(outputs, labels)
-            test_loss += loss.item() * views.size(0)
+                views, labels = views.cuda(), labels.cuda()
+                outputs = model(views)
+                loss = criterion(outputs, labels)
+                test_loss += loss.item() * views.size(0)
 
-            preds = torch.argmax(outputs, dim=1)
-            all_preds.extend(preds.cpu().numpy())
-            all_labels.extend(labels.cpu().numpy())
+                preds = torch.argmax(outputs, dim=1)
+                all_preds.extend(preds.cpu().numpy())
+                all_labels.extend(labels.cpu().numpy())
 
-    epoch_loss = test_loss / len(test_loader.dataset)
-    print(f'Test Loss: {epoch_loss:.4f}')
-    print(f'Epoch{epoch  +1}/{num_epochs}, Test Classification Report:')
-    print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
+        epoch_loss = test_loss / len(test_loader.dataset)
+        print(f'Test Loss: {epoch_loss:.4f}')
+        print(f'Epoch{epoch  +1}/{num_epochs}, Test Classification Report:')
+        print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
+    
+    except Exception as e:
+        print('Error occurred during testing: ', e)
     # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title='Test Confusion Matrix', cm_filename='test_confusion_matrix.png', cr_filename='test_baseline_report.txt')
 
 # def test_model(model, dataloader, scheduler, criterion):
@@ -330,7 +337,6 @@ def main():
     weights = R3D_18_Weights.DEFAULT
     self_supervised_model  = r3d_18(weights=weights)
 
-
     # weights = R2Plus1D_18_Weights.DEFAULT
     # self_supervised_model  = r2plus1d_18(weights=weights)
     self_supervised_model.fc = nn.Identity()
@@ -360,7 +366,6 @@ def main():
     nn.Linear(256, 2)  # Second linear layer from 256 to 2 classes
     )
 
-
     self_supervised_model = self_supervised_model.to(device)
 
     criterion = nn.CrossEntropyLoss()
@@ -372,7 +377,8 @@ def main():
     #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     # Train and evaluate the model
-    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=20, scheduler=scheduler, patience=5, min_delta=0.001)
+    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=6, scheduler=scheduler) # , patience=5, min_delta=0.001
+
     # Save the trained model
     # torch.save(self_supervised_model.state_dict(), 'baseline_model_plateau.pth')
 
