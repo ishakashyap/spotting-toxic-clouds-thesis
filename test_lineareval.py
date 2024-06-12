@@ -211,13 +211,13 @@ def main():
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
     
-    train_folder = "./train_baseline"
+    train_folder = "./train_set"
     train_label_folder = "./split/metadata_train_split_by_date.json"
 
-    val_folder = "./validation_baseline"
+    val_folder = "./validation_set"
     val_label_folder = "./split/metadata_validation_split_by_date.json"
 
-    test_folder = "./test_baseline"
+    test_folder = "./test_set"
     test_label_folder = "./split/metadata_test_split_by_date.json"
 
     train_dataset = VideoDataset(train_folder, train_label_folder, transform=train_transforms)
