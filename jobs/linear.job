@@ -2,7 +2,6 @@
 
 #SBATCH --partition=gpu
 #SBATCH --gpus=4
-#SBATCH --mem=80G
 #SBATCH --job-name=linear_model
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
