@@ -179,7 +179,7 @@ def get_smote_dataset(dataset):
     resampled_dataset = [(data_resampled[i].reshape(view.shape), labels_resampled[i]) for i in range(len(data_resampled))]
     return resampled_dataset
 
-def train(train_loader, val_loader, test_loader, model, optimizer, criterion, num_epochs, scheduler, beta, num_classes): # , patience=3, min_delta=0.001
+def train(train_loader, val_loader, test_loader, model, optimizer, num_epochs, scheduler, beta, num_classes): # , patience=3, min_delta=0.001
     # best_val_loss = np.inf
     # epochs_without_improvement = 0
     try:
@@ -257,7 +257,7 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
         #     print(f"Early stopping triggered after {epoch+1} epochs.")
         #     break
 
-def test(test_loader, model, criterion, epoch, num_epochs, beta, num_classes):
+def test(test_loader, model, epoch, num_epochs, beta, num_classes):
     model.eval()
     test_loss = 0.0
     all_preds = []
