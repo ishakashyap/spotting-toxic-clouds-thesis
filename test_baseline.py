@@ -10,6 +10,7 @@ from torch.optim.lr_scheduler import StepLR, ReduceLROnPlateau, CosineAnnealingL
 from torchvision.io import read_video
 from torchvision import transforms, models
 from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
+from imblearn.over_sampling import SMOTE
 from torchvision.transforms import functional as F
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from torchvision.models.video import r3d_18, R3D_18_Weights,  r2plus1d_18, R2Plus1D_18_Weights
@@ -153,6 +154,18 @@ def get_oversampled_loader(dataset):
     # print_class_distribution(sampled_targets, "Class Distribution After Sampling")
 
     return sampler
+
+def get_smote_dataset(dataset):
+    data, labels = [], []
+    for view, label in dataset:
+        data.append(view.flatten())  # Flatten for SMOTE compatibility
+        labels.append(label)
+    
+    smote = SMOTE()
+    data_resampled, labels_resampled = smote.fit_resample(data, labels)
+    
+    resampled_dataset = [(data_resampled[i].reshape(view.shape), labels_resampled[i]) for i in range(len(data_resampled))]
+    return resampled_dataset
 
 def train(train_loader, val_loader, test_loader, model, optimizer, criterion, num_epochs, scheduler): # , patience=3, min_delta=0.001
     # best_val_loss = np.inf
@@ -340,13 +353,13 @@ def main():
     val_dataset = VideoDataset(val_folder, val_label_folder, transform=train_transforms)
     test_dataset = VideoDataset(test_folder, test_label_folder, transform=train_transforms)
 
-    train_sampler = get_oversampled_loader(train_dataset)
-    val_sampler = get_oversampled_loader(val_dataset)
-    test_sampler = get_oversampled_loader(test_dataset)
+    smote_train = get_smote_dataset(train_dataset)
+    smote_val = get_smote_dataset(val_dataset)
+    smote_test = get_smote_dataset(test_dataset)
 
-    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True, sampler=train_sampler)
-    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True, sampler=val_sampler)
-    test_loader = DataLoader(test_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True, sampler=test_sampler)
+    train_loader = DataLoader(smote_train, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
+    val_loader = DataLoader(smote_val, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
+    test_loader = DataLoader(smote_test, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
 
     print("Videos are loaded!")
     
