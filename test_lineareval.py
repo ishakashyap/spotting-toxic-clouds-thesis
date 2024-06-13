@@ -259,13 +259,9 @@ def main():
     # val_sampler = get_oversampled_loader(val_dataset)
     # test_sampler = get_oversampled_loader(test_dataset)
 
-    smote_train = get_smote_dataset(train_dataset)
-    smote_val = get_smote_dataset(val_dataset)
-    smote_test = get_smote_dataset(test_dataset)
-
-    train_loader = DataLoader(smote_train, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
-    val_loader = DataLoader(smote_val, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
-    test_loader = DataLoader(smote_test, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
+    test_loader = DataLoader(test_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
     
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
