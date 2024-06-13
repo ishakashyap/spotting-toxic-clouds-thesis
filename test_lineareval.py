@@ -107,6 +107,24 @@ def plot_confusion_matrix(y_true, y_pred, classes, title='Confusion matrix', cm_
     with open(cr_filename, 'w') as f:
         f.write(report)
 
+def get_oversampled_loader(dataset):
+    targets = []
+    for _, label in dataset:
+        if label is not None:
+            targets.append(label.item())
+            
+    class_sample_count = np.array([len(np.where(targets == t)[0]) for t in np.unique(targets)])
+    weight = 1. / class_sample_count
+    samples_weight = np.array([weight[t] for t in targets])
+
+    samples_weight = torch.from_numpy(samples_weight)
+    sampler = WeightedRandomSampler(samples_weight.type('torch.DoubleTensor'), len(samples_weight), replacement=True)
+
+    # sampled_targets = [targets[i] for i in list(sampler)]
+    # print_class_distribution(sampled_targets, "Class Distribution After Sampling")
+
+    return sampler
+
 def train(train_loader, val_loader, test_loader, model, optimizer, criterion, num_epochs, scheduler):
     for epoch in range(num_epochs):
         model.train()
@@ -224,13 +242,13 @@ def main():
     val_dataset = VideoDataset(val_folder, val_label_folder, transform=train_transforms)
     test_dataset = VideoDataset(test_folder, test_label_folder, transform=train_transforms)
 
-    # train_sampler = get_oversampled_loader(train_dataset)
-    # val_sampler = get_oversampled_loader(val_dataset)
-    # test_sampler = get_oversampled_loader(test_dataset)
+    train_sampler = get_oversampled_loader(train_dataset)
+    val_sampler = get_oversampled_loader(val_dataset)
+    test_sampler = get_oversampled_loader(test_dataset)
 
-    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
-    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
-    test_loader = DataLoader(test_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True, sampler=train_sampler)
+    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True, sampler=val_sampler)
+    test_loader = DataLoader(test_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True, sampler=test_sampler)
     
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
