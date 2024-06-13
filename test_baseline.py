@@ -10,7 +10,6 @@ from torch.optim.lr_scheduler import StepLR, ReduceLROnPlateau, CosineAnnealingL
 from torchvision.io import read_video
 from torchvision import transforms, models
 from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
-from imblearn.over_sampling import SMOTE
 from torchvision.transforms import functional as F
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from torchvision.models.video import r3d_18, R3D_18_Weights,  r2plus1d_18, R2Plus1D_18_Weights
