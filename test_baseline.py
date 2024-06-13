@@ -137,6 +137,19 @@ def plot_confusion_matrix(y_true, y_pred, classes, title='Confusion matrix', cm_
     with open(cr_filename, 'w') as f:
         f.write(report)
 
+def class_balanced_loss(logits, labels, beta, num_classes):
+    effective_num = 1.0 - np.power(beta, np.bincount(labels.cpu()))
+    weights = (1.0 - beta) / np.array(effective_num)
+    weights = weights / np.sum(weights) * num_classes
+
+    weights = torch.tensor(weights, dtype=torch.float32).cuda()
+    labels_one_hot = F.one_hot(labels, num_classes).float()
+    weights = weights[None, :] * labels_one_hot
+    weights = weights.sum(1)
+    loss = F.cross_entropy(logits, labels, reduction='none')
+    loss = loss * weights
+    return loss.mean()
+
 def get_oversampled_loader(dataset):
     targets = []
     for _, label in dataset:
@@ -167,7 +180,7 @@ def get_smote_dataset(dataset):
     resampled_dataset = [(data_resampled[i].reshape(view.shape), labels_resampled[i]) for i in range(len(data_resampled))]
     return resampled_dataset
 
-def train(train_loader, val_loader, test_loader, model, optimizer, criterion, num_epochs, scheduler): # , patience=3, min_delta=0.001
+def train(train_loader, val_loader, test_loader, model, optimizer, criterion, num_epochs, scheduler, beta, num_classes): # , patience=3, min_delta=0.001
     # best_val_loss = np.inf
     # epochs_without_improvement = 0
     try:
@@ -184,7 +197,8 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
                 views, labels = views.cuda(), labels.cuda()
                 optimizer.zero_grad()
                 outputs = model(views)
-                loss = criterion(outputs, labels)
+                # loss = criterion(outputs, labels)
+                loss = class_balanced_loss(outputs, labels, beta, num_classes)
                 loss.backward()
                 optimizer.step()
                 train_loss += loss.item() * views.size(0)
@@ -213,7 +227,8 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
 
                     views, labels = views.cuda(), labels.cuda()
                     outputs = model(views)
-                    loss = criterion(outputs, labels)
+                    # loss = criterion(outputs, labels)
+                    loss = class_balanced_loss(outputs, labels, beta, num_classes)
                     val_loss += loss.item() * views.size(0)
 
                     preds = torch.argmax(outputs, dim=1)
@@ -227,7 +242,7 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
             print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
             # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Validation Confusion Matrix Epoch {epoch+1}', cm_filename=f'validation_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'validation_baseline_report_epoch_{epoch+1}.txt')
 
-            test(test_loader=test_loader, model=model, criterion=criterion, epoch=epoch, num_epochs=num_epochs)
+            test(test_loader=test_loader, model=model, epoch=epoch, num_epochs=num_epochs, beta=beta, num_classes=num_classes)
         
     except Exception as e:
         print('Error occurred during training or validation: ', e)
@@ -243,7 +258,7 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
         #     print(f"Early stopping triggered after {epoch+1} epochs.")
         #     break
 
-def test(test_loader, model, criterion, epoch, num_epochs):
+def test(test_loader, model, criterion, epoch, num_epochs, beta, num_classes):
     model.eval()
     test_loss = 0.0
     all_preds = []
@@ -257,7 +272,8 @@ def test(test_loader, model, criterion, epoch, num_epochs):
 
                 views, labels = views.cuda(), labels.cuda()
                 outputs = model(views)
-                loss = criterion(outputs, labels)
+                # loss = criterion(outputs, labels)
+                loss = class_balanced_loss(outputs, labels, beta, num_classes)
                 test_loss += loss.item() * views.size(0)
 
                 preds = torch.argmax(outputs, dim=1)
@@ -353,13 +369,13 @@ def main():
     val_dataset = VideoDataset(val_folder, val_label_folder, transform=train_transforms)
     test_dataset = VideoDataset(test_folder, test_label_folder, transform=train_transforms)
 
-    smote_train = get_smote_dataset(train_dataset)
-    smote_val = get_smote_dataset(val_dataset)
-    smote_test = get_smote_dataset(test_dataset)
+    # smote_train = get_smote_dataset(train_dataset)
+    # smote_val = get_smote_dataset(val_dataset)
+    # smote_test = get_smote_dataset(test_dataset)
 
-    train_loader = DataLoader(smote_train, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
-    val_loader = DataLoader(smote_val, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
-    test_loader = DataLoader(smote_test, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
+    test_loader = DataLoader(test_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
 
     print("Videos are loaded!")
     
@@ -399,7 +415,7 @@ def main():
 
     self_supervised_model = self_supervised_model.to(device)
 
-    criterion = nn.CrossEntropyLoss()
+    # criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(self_supervised_model.parameters(), lr=1e-3, momentum=0.9, weight_decay=1e-4)
     scheduler = ReduceLROnPlateau(optimizer, mode='min')
     # scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
@@ -408,7 +424,7 @@ def main():
     #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     # Train and evaluate the model
-    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=6, scheduler=scheduler) # , patience=5, min_delta=0.001
+    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, num_epochs=6, scheduler=scheduler, beta=0.999, num_classes=2) # patience=5, min_delta=0.001
 
     # Save the trained model
     # torch.save(self_supervised_model.state_dict(), 'baseline_model_plateau.pth')
