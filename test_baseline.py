@@ -142,10 +142,10 @@ def class_balanced_loss(logits, labels, beta, num_classes):
     weights = weights / np.sum(weights) * num_classes
 
     weights = torch.tensor(weights, dtype=torch.float32).cuda()
-    labels_one_hot = F.one_hot(labels, num_classes).float()
+    labels_one_hot = nn.functional.one_hot(labels, num_classes).float()
     weights = weights[None, :] * labels_one_hot
     weights = weights.sum(1)
-    loss = F.cross_entropy(logits, labels, reduction='none')
+    loss = nn.functional.cross_entropy(logits, labels, reduction='none')
     loss = loss * weights
     return loss.mean()
 
