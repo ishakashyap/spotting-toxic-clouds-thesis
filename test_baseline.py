@@ -149,8 +149,8 @@ def get_oversampled_loader(dataset):
     samples_weight = torch.from_numpy(samples_weight)
     sampler = WeightedRandomSampler(samples_weight.type('torch.DoubleTensor'), len(samples_weight), replacement=True)
 
-    sampled_targets = [targets[i] for i in list(sampler)]
-    print_class_distribution(sampled_targets, "Class Distribution After Sampling")
+    # sampled_targets = [targets[i] for i in list(sampler)]
+    # print_class_distribution(sampled_targets, "Class Distribution After Sampling")
 
     return sampler
 
