@@ -5,7 +5,7 @@
 #SBATCH --job-name=linear_model
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
-#SBATCH --time=7:00:00
+#SBATCH --time=3:00:00
 #SBATCH --output=jobs/outputs/linear_rlr_6epochs.out
 
 cd /projects/0/prjs0935/spotting-toxic-clouds-thesis
