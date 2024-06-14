@@ -10,6 +10,7 @@ from torch.optim.lr_scheduler import StepLR, ReduceLROnPlateau, CosineAnnealingL
 from torchvision.io import read_video
 from torchvision import transforms, models
 from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
+from imblearn.over_sampling import SMOTE
 from torchvision.transforms import functional as F
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from torchvision.models.video import r3d_18, R3D_18_Weights,  r2plus1d_18, R2Plus1D_18_Weights
@@ -136,50 +137,20 @@ def plot_confusion_matrix(y_true, y_pred, classes, title='Confusion matrix', cm_
     with open(cr_filename, 'w') as f:
         f.write(report)
 
-def class_balanced_loss(logits, labels, beta, num_classes):
-    effective_num = 1.0 - np.power(beta, np.bincount(labels.cpu()))
-    weights = (1.0 - beta) / np.array(effective_num)
-    weights = weights / np.sum(weights) * num_classes
-
-    weights = torch.tensor(weights, dtype=torch.float32).cuda()
-    labels_one_hot = nn.functional.one_hot(labels, num_classes).float()
-    weights = weights[None, :] * labels_one_hot
-    weights = weights.sum(1)
-    loss = nn.functional.cross_entropy(logits, labels, reduction='none')
-    loss = loss * weights
-    return loss.mean()
-
-def get_oversampled_loader(dataset):
-    targets = []
-    for _, label in dataset:
-        if label is not None:
-            targets.append(label.item())
-            
-    class_sample_count = np.array([len(np.where(targets == t)[0]) for t in np.unique(targets)])
-    weight = 1. / class_sample_count
-    samples_weight = np.array([weight[t] for t in targets])
-
-    samples_weight = torch.from_numpy(samples_weight)
-    sampler = WeightedRandomSampler(samples_weight.type('torch.DoubleTensor'), len(samples_weight), replacement=True)
-
-    # sampled_targets = [targets[i] for i in list(sampler)]
-    # print_class_distribution(sampled_targets, "Class Distribution After Sampling")
-
-    return sampler
-
-def get_smote_dataset(dataset):
-    data, labels = [], []
-    for view, label in dataset:
-        data.append(view.flatten())  # Flatten for SMOTE compatibility
-        labels.append(label)
-    
+def apply_smote(video_dataset):
+    flat_data = []
+    labels = []
+    for i in range(len(video_dataset)):
+        view, label = video_dataset[i]
+        if view is not None and label is not None:
+            flat_data.append(view.flatten().numpy())
+            labels.append(label.item())
     smote = SMOTE()
-    data_resampled, labels_resampled = smote.fit_resample(data, labels)
-    
-    resampled_dataset = [(data_resampled[i].reshape(view.shape), labels_resampled[i]) for i in range(len(data_resampled))]
-    return resampled_dataset
+    flat_data_resampled, labels_resampled = smote.fit_resample(flat_data, labels)
+    resampled_views = [torch.tensor(view.reshape(3, -1, 112, 112)) for view in flat_data_resampled]
+    return resampled_views, labels_resampled
 
-def train(train_loader, val_loader, test_loader, model, optimizer, num_epochs, scheduler, beta, num_classes): # , patience=3, min_delta=0.001
+def train(train_loader, val_loader, test_loader, model, optimizer, criterion, num_epochs, scheduler): # , patience=3, min_delta=0.001
     # best_val_loss = np.inf
     # epochs_without_improvement = 0
     try:
@@ -196,8 +167,7 @@ def train(train_loader, val_loader, test_loader, model, optimizer, num_epochs, s
                 views, labels = views.cuda(), labels.cuda()
                 optimizer.zero_grad()
                 outputs = model(views)
-                # loss = criterion(outputs, labels)
-                loss = class_balanced_loss(outputs, labels, beta, num_classes)
+                loss = criterion(outputs, labels)
                 loss.backward()
                 optimizer.step()
                 train_loss += loss.item() * views.size(0)
@@ -226,8 +196,7 @@ def train(train_loader, val_loader, test_loader, model, optimizer, num_epochs, s
 
                     views, labels = views.cuda(), labels.cuda()
                     outputs = model(views)
-                    # loss = criterion(outputs, labels)
-                    loss = class_balanced_loss(outputs, labels, beta, num_classes)
+                    loss = criterion(outputs, labels)
                     val_loss += loss.item() * views.size(0)
 
                     preds = torch.argmax(outputs, dim=1)
@@ -241,7 +210,7 @@ def train(train_loader, val_loader, test_loader, model, optimizer, num_epochs, s
             print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
             # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Validation Confusion Matrix Epoch {epoch+1}', cm_filename=f'validation_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'validation_baseline_report_epoch_{epoch+1}.txt')
 
-            test(test_loader=test_loader, model=model, epoch=epoch, num_epochs=num_epochs, beta=beta, num_classes=num_classes)
+            test(test_loader=test_loader, model=model, criterion=criterion, epoch=epoch, num_epochs=num_epochs)
         
     except Exception as e:
         print('Error occurred during training or validation: ', e)
@@ -257,7 +226,7 @@ def train(train_loader, val_loader, test_loader, model, optimizer, num_epochs, s
         #     print(f"Early stopping triggered after {epoch+1} epochs.")
         #     break
 
-def test(test_loader, model, epoch, num_epochs, beta, num_classes):
+def test(test_loader, model, criterion, epoch, num_epochs):
     model.eval()
     test_loss = 0.0
     all_preds = []
@@ -271,8 +240,7 @@ def test(test_loader, model, epoch, num_epochs, beta, num_classes):
 
                 views, labels = views.cuda(), labels.cuda()
                 outputs = model(views)
-                # loss = criterion(outputs, labels)
-                loss = class_balanced_loss(outputs, labels, beta, num_classes)
+                loss = criterion(outputs, labels)
                 test_loss += loss.item() * views.size(0)
 
                 preds = torch.argmax(outputs, dim=1)
@@ -368,13 +336,22 @@ def main():
     val_dataset = VideoDataset(val_folder, val_label_folder, transform=train_transforms)
     test_dataset = VideoDataset(test_folder, test_label_folder, transform=train_transforms)
 
+    train_videos, train_labels = apply_smote(train_dataset)
+    train_loader = DataLoader(list(zip(train_videos, train_labels)), batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
+
+    val_videos, val_labels = apply_smote(val_dataset)
+    val_loader = DataLoader(list(zip(val_videos, val_labels)), batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
+
+    test_videos, test_labels = apply_smote(test_dataset)
+    test_loader = DataLoader(list(zip(test_videos, test_labels)), batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
+
     # smote_train = get_smote_dataset(train_dataset)
     # smote_val = get_smote_dataset(val_dataset)
     # smote_test = get_smote_dataset(test_dataset)
 
-    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
-    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
-    test_loader = DataLoader(test_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
+    # train_loader = DataLoader(train_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
+    # val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
+    # test_loader = DataLoader(test_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
 
     print("Videos are loaded!")
     
@@ -414,7 +391,7 @@ def main():
 
     self_supervised_model = self_supervised_model.to(device)
 
-    # criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(self_supervised_model.parameters(), lr=1e-3, momentum=0.9, weight_decay=1e-4)
     scheduler = ReduceLROnPlateau(optimizer, mode='min')
     # scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
@@ -423,7 +400,7 @@ def main():
     #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     # Train and evaluate the model
-    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, num_epochs=6, scheduler=scheduler, beta=0.999, num_classes=2) # patience=5, min_delta=0.001
+    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=6, scheduler=scheduler) # , patience=5, min_delta=0.001
 
     # Save the trained model
     # torch.save(self_supervised_model.state_dict(), 'baseline_model_plateau.pth')
