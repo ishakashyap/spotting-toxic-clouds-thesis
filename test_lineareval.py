@@ -6,9 +6,10 @@ import torch.nn as nn
 import matplotlib.pyplot as plt
 import torch.optim as optim
 from torchvision.io import read_video
+from collections import Counter
 from torchvision import transforms, models
 from torch.optim.lr_scheduler import StepLR, CosineAnnealingLR, ReduceLROnPlateau
-from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
+from torch.utils.data import DataLoader, Dataset, Subset
 from imblearn.over_sampling import SMOTE
 from torchvision.transforms import functional as F
 from torchvision.models.video import r3d_18, R3D_18_Weights
@@ -120,6 +121,21 @@ def apply_smote(video_dataset):
     flat_data_resampled, labels_resampled = smote.fit_resample(flat_data, labels)
     resampled_views = [torch.tensor(view.reshape(3, -1, 112, 112)) for view in flat_data_resampled]
     return resampled_views, labels_resampled
+
+def random_undersample(dataset):
+    label_counter = Counter(dataset.targets.tolist())
+    min_class_count = min(label_counter.values())
+
+    indices = []
+    class_counts = {label: 0 for label in label_counter.keys()}
+
+    for idx, label in enumerate(dataset.targets.tolist()):
+        if class_counts[label] < min_class_count:
+            indices.append(idx)
+            class_counts[label] += 1
+
+    undersampled_dataset = Subset(dataset, indices)
+    return undersampled_dataset
 
 def train(train_loader, val_loader, test_loader, model, optimizer, criterion, num_epochs, scheduler):
     for epoch in range(num_epochs):
@@ -238,14 +254,22 @@ def main():
     val_dataset = VideoDataset(val_folder, val_label_folder, transform=train_transforms)
     test_dataset = VideoDataset(test_folder, test_label_folder, transform=train_transforms)
 
-    train_videos, train_labels = apply_smote(train_dataset)
-    train_loader = DataLoader(list(zip(train_videos, train_labels)), batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
+    print("Applying Random Undersampling to balance the dataset...")
+    # undersampled_train = random_undersample(train_dataset)
+    undersampled_val = random_undersample(val_dataset)
+    undersampled_test = random_undersample(test_dataset)
+    print("Random Undersampling applied successfully!")
 
-    val_videos, val_labels = apply_smote(val_dataset)
-    val_loader = DataLoader(list(zip(val_videos, val_labels)), batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
+    # train_videos, train_labels = apply_smote(train_dataset)
+    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
 
-    test_videos, test_labels = apply_smote(test_dataset)
-    test_loader = DataLoader(list(zip(test_videos, test_labels)), batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
+    # val_videos, val_labels = apply_smote(val_dataset)
+    val_loader = DataLoader(undersampled_val, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
+
+    # test_videos, test_labels = apply_smote(test_dataset)
+    test_loader = DataLoader(undersampled_test, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
+
+    print("Videos are loaded!\n")
 
     # train_loader = DataLoader(train_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
     # val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
