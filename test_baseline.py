@@ -354,13 +354,13 @@ def main():
     test_dataset = VideoDataset(test_folder, test_label_folder, transform=train_transforms)
 
     print("Applying Random Undersampling to balance the dataset...")
-    undersampled_train = random_undersample(train_dataset)
+    # undersampled_train = random_undersample(train_dataset)
     undersampled_val = random_undersample(val_dataset)
     undersampled_test = random_undersample(test_dataset)
     print("Random Undersampling applied successfully!")
 
     # train_videos, train_labels = apply_smote(train_dataset)
-    train_loader = DataLoader(undersampled_train, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
 
     # val_videos, val_labels = apply_smote(val_dataset)
     val_loader = DataLoader(undersampled_val, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
