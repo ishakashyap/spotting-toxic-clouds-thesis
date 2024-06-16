@@ -161,7 +161,8 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
             all_labels.extend(labels.cpu().numpy())
 
         epoch_loss = train_loss / len(train_loader.dataset)
-        current_lr = optimizer.param_groups[0]['lr']
+        # current_lr = optimizer.param_groups[0]['lr']
+        current_lr = "not relevant"
         print(f"Epoch {epoch+1}, Loss: {epoch_loss}, LR: {current_lr}")
         print('Training Classification Report:')
         print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
@@ -187,7 +188,7 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
                 all_labels.extend(labels.cpu().numpy())
 
         epoch_val_loss = val_loss / len(val_loader.dataset)
-        scheduler.step(epoch_val_loss)
+        # scheduler.step(epoch_val_loss)
         print(f'Epoch {epoch+1}/{num_epochs}, Validation Loss: {epoch_val_loss:.4f}')
         print('Validation Classification Report:')
         print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
@@ -222,6 +223,8 @@ def test(test_loader, model, criterion):
 
 def main():
 
+    print("Start loading videos...\n")
+
     train_transforms = transforms.Compose([
         transforms.Resize(224), 
         transforms.RandomApply([transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.5),
@@ -229,13 +232,6 @@ def main():
         transforms.RandomGrayscale(p=0.2),
         transforms.RandomHorizontalFlip(), 
         transforms.RandomRotation(degrees=15),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])
-
-    val_transforms = transforms.Compose([
-        transforms.Resize(224),
         transforms.CenterCrop(224),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
@@ -254,20 +250,20 @@ def main():
     val_dataset = VideoDataset(val_folder, val_label_folder, transform=train_transforms)
     test_dataset = VideoDataset(test_folder, test_label_folder, transform=train_transforms)
 
-    print("Applying Random Undersampling to balance the dataset...")
+    # print("Applying Random Undersampling to balance the dataset...")
     # undersampled_train = random_undersample(train_dataset)
-    undersampled_val = random_undersample(val_dataset)
-    undersampled_test = random_undersample(test_dataset)
-    print("Random Undersampling applied successfully!")
+    # undersampled_val = random_undersample(val_dataset)
+    # undersampled_test = random_undersample(test_dataset)
+    # print("Random Undersampling applied successfully!")
 
     # train_videos, train_labels = apply_smote(train_dataset)
     train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
 
     # val_videos, val_labels = apply_smote(val_dataset)
-    val_loader = DataLoader(undersampled_val, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
 
     # test_videos, test_labels = apply_smote(test_dataset)
-    test_loader = DataLoader(undersampled_test, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
+    test_loader = DataLoader(test_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
 
     print("Videos are loaded!\n")
 
