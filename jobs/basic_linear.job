@@ -10,6 +10,7 @@
 
 cd /projects/0/prjs0935/spotting-toxic-clouds-thesis
 module load 2022
+module purge
 module load Anaconda3/2022.05
 
 source activate dl2023
