@@ -13,4 +13,4 @@ module load 2022
 module load Anaconda3/2022.05
 
 source activate dl2023
-srun python test_lineareval.py
+srun python -u test_lineareval.py
