@@ -11,7 +11,6 @@ from torch.optim.lr_scheduler import StepLR, ReduceLROnPlateau, CosineAnnealingL
 from torchvision.io import read_video
 from torchvision import transforms, models
 from torch.utils.data import DataLoader, Dataset, Subset
-from imblearn.over_sampling import SMOTE
 from torchvision.transforms import functional as F
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from torchvision.models.video import r3d_18, R3D_18_Weights,  r2plus1d_18, R2Plus1D_18_Weights
@@ -138,34 +137,6 @@ def plot_confusion_matrix(y_true, y_pred, classes, title='Confusion matrix', cm_
     with open(cr_filename, 'w') as f:
         f.write(report)
 
-def apply_smote(video_dataset):
-    flat_data = []
-    labels = []
-    for i in range(len(video_dataset)):
-        view, label = video_dataset[i]
-        if view is not None and label is not None:
-            flat_data.append(view.flatten().numpy())
-            labels.append(label.item())
-    smote = SMOTE()
-    flat_data_resampled, labels_resampled = smote.fit_resample(flat_data, labels)
-    resampled_views = [torch.tensor(view.reshape(3, -1, 112, 112)) for view in flat_data_resampled]
-    return resampled_views, labels_resampled
-
-def random_undersample(dataset):
-    label_counter = Counter(dataset.targets.tolist())
-    min_class_count = min(label_counter.values())
-
-    indices = []
-    class_counts = {label: 0 for label in label_counter.keys()}
-
-    for idx, label in enumerate(dataset.targets.tolist()):
-        if class_counts[label] < min_class_count:
-            indices.append(idx)
-            class_counts[label] += 1
-
-    undersampled_dataset = Subset(dataset, indices)
-    return undersampled_dataset
-
 def train(train_loader, val_loader, test_loader, model, optimizer, criterion, num_epochs, scheduler): # , patience=3, min_delta=0.001
     # best_val_loss = np.inf
     # epochs_without_improvement = 0
@@ -193,8 +164,8 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
                 all_labels.extend(labels.cpu().numpy())
 
             epoch_loss = train_loss / len(train_loader.dataset)
-            # current_lr = scheduler.get_last_lr()
-            current_lr = optimizer.param_groups[0]['lr']
+            current_lr = "Not relevant"
+            # current_lr = optimizer.param_groups[0]['lr']
             print(f"Epoch {epoch+1}, Loss: {epoch_loss}, LR: {current_lr}")
             print('Training Classification Report:')
             print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
@@ -220,7 +191,7 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
                     all_labels.extend(labels.cpu().numpy())
                 
             epoch_val_loss = val_loss / len(val_loader.dataset)
-            scheduler.step(epoch_val_loss)
+            # scheduler.step(epoch_val_loss)
             print(f'Epoch {epoch+1}/{num_epochs}, Validation Loss: {epoch_val_loss:.4f}')
             print('Validation Classification Report:')
             print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
@@ -317,6 +288,8 @@ def test(test_loader, model, criterion, epoch, num_epochs):
 
 def main():
 
+    print("Start loading videos...\n")
+
     train_transforms = transforms.Compose([
         transforms.Resize(224), 
         # Blur
@@ -327,13 +300,6 @@ def main():
         # Dimension
         transforms.RandomHorizontalFlip(), 
         transforms.RandomRotation(degrees=15),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])
-
-    val_transforms = transforms.Compose([
-        transforms.Resize(224),
         transforms.CenterCrop(224),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
@@ -352,28 +318,9 @@ def main():
     val_dataset = VideoDataset(val_folder, val_label_folder, transform=train_transforms)
     test_dataset = VideoDataset(test_folder, test_label_folder, transform=train_transforms)
 
-    print("Applying Random Undersampling to balance the dataset...")
-    # undersampled_train = random_undersample(train_dataset)
-    undersampled_val = random_undersample(val_dataset)
-    undersampled_test = random_undersample(test_dataset)
-    print("Random Undersampling applied successfully!")
-
-    # train_videos, train_labels = apply_smote(train_dataset)
     train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
-
-    # val_videos, val_labels = apply_smote(val_dataset)
-    val_loader = DataLoader(undersampled_val, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
-
-    # test_videos, test_labels = apply_smote(test_dataset)
-    test_loader = DataLoader(undersampled_test, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
-
-    # smote_train = get_smote_dataset(train_dataset)
-    # smote_val = get_smote_dataset(val_dataset)
-    # smote_test = get_smote_dataset(test_dataset)
-
-    # train_loader = DataLoader(train_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
-    # val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
-    # test_loader = DataLoader(test_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
+    test_loader = DataLoader(test_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
 
     print("Videos are loaded!")
     
@@ -382,13 +329,13 @@ def main():
     weights = R3D_18_Weights.DEFAULT
     self_supervised_model  = r3d_18(weights=weights)
 
+    # Freeze all layers of the pre-trained model
+    for param in self_supervised_model.parameters():
+        param.requires_grad = False
+
     # weights = R2Plus1D_18_Weights.DEFAULT
     # self_supervised_model  = r2plus1d_18(weights=weights)
     self_supervised_model.fc = nn.Identity()
-
-    # Freeze all layers of the pre-trained model
-    # for param in self_supervised_model.parameters():
-    #     param.requires_grad = False
 
     # Add a linear layer on top for the classification task
     num_ftrs = 512 #self_supervised_model.fc.in_features
@@ -400,16 +347,16 @@ def main():
     # Remove the final fully connected layer
     # self_supervised_model.fc = nn.Identity()
 
-    # Add new fully connected layers with dropout
-    num_features = self_supervised_model.fc.in_features if hasattr(self_supervised_model.fc, 'in_features') else 512
-    self_supervised_model.fc = nn.Sequential(
-    nn.Dropout(p=0.5),
-    nn.Linear(num_features, 256),  # First linear layer from 512 to 256
-    nn.BatchNorm1d(256),
-    nn.ReLU(),
-    nn.Dropout(p=0.5),
-    nn.Linear(256, 2)  # Second linear layer from 256 to 2 classes
-    )
+    # # Add new fully connected layers with dropout
+    # num_features = self_supervised_model.fc.in_features if hasattr(self_supervised_model.fc, 'in_features') else 512
+    # self_supervised_model.fc = nn.Sequential(
+    # nn.Dropout(p=0.5),
+    # nn.Linear(num_features, 256),  # First linear layer from 512 to 256
+    # nn.BatchNorm1d(256),
+    # nn.ReLU(),
+    # nn.Dropout(p=0.5),
+    # nn.Linear(256, 2)  # Second linear layer from 256 to 2 classes
+    # )
 
     self_supervised_model = self_supervised_model.to(device)
 
