@@ -1,16 +1,19 @@
 #!/bin/bash
 
 #SBATCH --partition=gpu
-#SBATCH --gpus=4
+#SBATCH -N 1
+#SBATCH --gpus-per-node=4
+#SBATCH --mem=80G
 #SBATCH --job-name=base_model
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
-#SBATCH --time=3:00:00
-#SBATCH --output=jobs/outputs/baseline_rlr_under.out
+#SBATCH --time=01:00:00
+#SBATCH --output=jobs/outputs/baseline_r3d_basic.out
 
 cd /projects/0/prjs0935/spotting-toxic-clouds-thesis
 module load 2022
 module load Anaconda3/2022.05
+model purge
 
 source activate dl2023
-srun python -u test_baseline.py
+srun python test_baseline.py

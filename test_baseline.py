@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import torch
 import numpy as np
@@ -169,6 +170,7 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
             print(f"Epoch {epoch+1}, Loss: {epoch_loss}, LR: {current_lr}")
             print('Training Classification Report:')
             print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
+            sys.stdout.flush()
             # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Training Confusion Matrix Epoch {epoch+1}', cm_filename=f'training_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'training_baseline_report_epoch_{epoch+1}.txt')
 
             model.eval()
@@ -195,6 +197,7 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
             print(f'Epoch {epoch+1}/{num_epochs}, Validation Loss: {epoch_val_loss:.4f}')
             print('Validation Classification Report:')
             print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
+            sys.stdout.flush()
             # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Validation Confusion Matrix Epoch {epoch+1}', cm_filename=f'validation_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'validation_baseline_report_epoch_{epoch+1}.txt')
 
             test(test_loader=test_loader, model=model, criterion=criterion, epoch=epoch, num_epochs=num_epochs)
@@ -238,6 +241,7 @@ def test(test_loader, model, criterion, epoch, num_epochs):
         print(f'Test Loss: {epoch_loss:.4f}')
         print(f'Epoch{epoch  +1}/{num_epochs}, Test Classification Report:')
         print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
+        sys.stdout.flush()
     
     except Exception as e:
         print('Error occurred during testing: ', e)
@@ -289,6 +293,8 @@ def test(test_loader, model, criterion, epoch, num_epochs):
 def main():
 
     print("Start loading videos...\n")
+    sys.stdout.flush()
+
 
     train_transforms = transforms.Compose([
         transforms.Resize(224), 
