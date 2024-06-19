@@ -240,8 +240,6 @@ def main():
     model_path = "test_full_data.pth"
     weights = R3D_18_Weights.DEFAULT
     self_supervised_model  = r3d_18(weights=weights)
-    self_supervised_model.fc = nn.Identity()
-
 
     # self_supervised_model = Inception3D(num_classes=2)
     
@@ -252,7 +250,8 @@ def main():
     for param in self_supervised_model.parameters():
         param.requires_grad = False
     
-        # Add a linear layer on top for the classification task
+    # Add a linear layer on top for the classification task
+    self_supervised_model.fc = nn.Identity()
     num_ftrs = 512 #self_supervised_model.fc.in_features
     self_supervised_model.fc = nn.Linear(num_ftrs, 2)  # Assuming binary classification
 
