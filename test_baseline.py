@@ -329,18 +329,19 @@ def main():
     test_loader = DataLoader(test_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
 
     print("Videos are loaded!")
+    sys.stdout.flush()
     
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    weights = R3D_18_Weights.DEFAULT
-    self_supervised_model  = r3d_18(weights=weights)
+    # weights = R3D_18_Weights.DEFAULT
+    # self_supervised_model  = r3d_18(weights=weights)
+    weights = R2Plus1D_18_Weights.DEFAULT
+    self_supervised_model  = r2plus1d_18(weights=weights)
 
     # Freeze all layers of the pre-trained model
     for param in self_supervised_model.parameters():
         param.requires_grad = False
 
-    # weights = R2Plus1D_18_Weights.DEFAULT
-    # self_supervised_model  = r2plus1d_18(weights=weights)
     self_supervised_model.fc = nn.Identity()
 
     # Add a linear layer on top for the classification task
