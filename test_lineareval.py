@@ -241,10 +241,7 @@ def main():
     weights = R3D_18_Weights.DEFAULT
     self_supervised_model  = r3d_18(weights=weights)
     self_supervised_model.fc = nn.Identity()
-    
-    # Add a linear layer on top for the classification task
-    num_ftrs = 512 #self_supervised_model.fc.in_features
-    self_supervised_model.fc = nn.Linear(num_ftrs, 2)  # Assuming binary classification
+
 
     # self_supervised_model = Inception3D(num_classes=2)
     
@@ -254,6 +251,10 @@ def main():
     # Freeze all layers of the pre-trained model
     for param in self_supervised_model.parameters():
         param.requires_grad = False
+    
+        # Add a linear layer on top for the classification task
+    num_ftrs = 512 #self_supervised_model.fc.in_features
+    self_supervised_model.fc = nn.Linear(num_ftrs, 2)  # Assuming binary classification
 
     self_supervised_model = self_supervised_model.to(device)
 
