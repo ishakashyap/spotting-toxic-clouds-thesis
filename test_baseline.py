@@ -345,7 +345,6 @@ def main():
     # for param in self_supervised_model.parameters():
     #     param.requires_grad = False
 
-
     # Add a linear layer on top for the classification task
     # num_ftrs = 512 #self_supervised_model.fc.in_features
     # self_supervised_model.fc = nn.Linear(num_ftrs, 2)  # Assuming binary classification
@@ -370,7 +369,8 @@ def main():
     self_supervised_model = self_supervised_model.to(device)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(self_supervised_model.parameters(), lr=1e-3, momentum=0.9, weight_decay=1e-4)
+    # Changed lr to 0.1 and wd to 1e-6 for i3d
+    optimizer = optim.SGD(self_supervised_model.parameters(), lr=0.1, momentum=0.9, weight_decay=1e-6)
     scheduler = ReduceLROnPlateau(optimizer, mode='min')
     # scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
 
