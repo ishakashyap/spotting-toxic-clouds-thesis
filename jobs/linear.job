@@ -8,11 +8,10 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
 #SBATCH --time=04:00:00
-#SBATCH --output=jobs/outputs/linear_r3d_basic2.out
+#SBATCH --output=jobs/outputs/linear_r3d_basic3.out
 
 cd /projects/0/prjs0935/spotting-toxic-clouds-thesis
 module load 2022
-model purge
 module load Anaconda3/2022.05
 
 source activate dl2023

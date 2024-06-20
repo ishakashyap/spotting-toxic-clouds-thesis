@@ -237,7 +237,7 @@ def main():
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # Load a pre-trained ResNet model and modify the final layer
-    model_path = "test_full_data.pth"
+    model_path = "final_data.pth"
     weights = R3D_18_Weights.DEFAULT
     self_supervised_model  = r3d_18(weights=weights)
 
