@@ -13,7 +13,7 @@ from torchvision import transforms, models
 from torch.optim.lr_scheduler import StepLR, CosineAnnealingLR, ReduceLROnPlateau
 from torch.utils.data import DataLoader, Dataset, Subset
 from torchvision.transforms import functional as F
-from torchvision.models.video import r3d_18, R3D_18_Weights
+from torchvision.models.video import r3d_18, R3D_18_Weights, r2plus1d_18, R2Plus1D_18_Weights
 from sklearn.metrics import classification_report, f1_score, confusion_matrix
 
 class VideoDataset(Dataset):
@@ -238,8 +238,11 @@ def main():
 
     # Load a pre-trained ResNet model and modify the final layer
     model_path = "final_data.pth"
-    weights = R3D_18_Weights.DEFAULT
-    self_supervised_model  = r3d_18(weights=weights)
+    # weights = R3D_18_Weights.DEFAULT
+    # self_supervised_model  = r3d_18(weights=weights)
+
+    weights = R2Plus1D_18_Weights.DEFAULT
+    self_supervised_model  = r2plus1d_18(weights=weights)
 
     # self_supervised_model = Inception3D(num_classes=2)
     
