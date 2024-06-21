@@ -368,7 +368,7 @@ def main():
 
     self_supervised_model = self_supervised_model.to(device)
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.functional.binary_cross_entropy_with_logits() #nn.CrossEntropyLoss()
     # Changed lr to 0.1 and wd to 1e-6 for i3d
     optimizer = optim.SGD(self_supervised_model.parameters(), lr=0.1, momentum=0.9, weight_decay=1e-6)
     scheduler = ReduceLROnPlateau(optimizer, mode='min')

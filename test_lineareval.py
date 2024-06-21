@@ -134,8 +134,8 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
             all_labels.extend(labels.cpu().numpy())
 
         epoch_loss = train_loss / len(train_loader.dataset)
-        # current_lr = optimizer.param_groups[0]['lr']
-        current_lr = "not relevant"
+        current_lr = optimizer.param_groups[0]['lr']
+        # current_lr = "not relevant"
         print(f"Epoch {epoch+1}, Loss: {epoch_loss}, LR: {current_lr}")
         print('Training Classification Report:')
         print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
@@ -162,7 +162,7 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
                 all_labels.extend(labels.cpu().numpy())
 
         epoch_val_loss = val_loss / len(val_loader.dataset)
-        # scheduler.step(epoch_val_loss)
+        scheduler.step(epoch_val_loss)
         print(f'Epoch {epoch+1}/{num_epochs}, Validation Loss: {epoch_val_loss:.4f}')
         print('Validation Classification Report:')
         print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
@@ -204,12 +204,12 @@ def main():
 
     train_transforms = transforms.Compose([
         transforms.Resize(224), 
-        transforms.RandomApply([transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.5),
-        transforms.RandomApply([transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.1)], p=0.8),
-        transforms.RandomGrayscale(p=0.2),
-        transforms.RandomHorizontalFlip(), 
-        transforms.RandomRotation(degrees=15),
-        transforms.CenterCrop(224),
+        # transforms.RandomApply([transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.5),
+        # transforms.RandomApply([transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.1)], p=0.8),
+        # transforms.RandomGrayscale(p=0.2),
+        # transforms.RandomHorizontalFlip(), 
+        # transforms.RandomRotation(degrees=15),
+        # transforms.CenterCrop(224),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
@@ -268,7 +268,7 @@ def main():
     #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     # Train and evaluate the model
-    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=6, scheduler=scheduler) # , patience=5, min_delta=0.001
+    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=3, scheduler=scheduler) # , patience=5, min_delta=0.001
 
     # Save the trained model
     # torch.save(self_supervised_model.state_dict(), 'linear_eval_model.pth')
