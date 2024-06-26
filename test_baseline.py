@@ -155,7 +155,7 @@ def train(train_loader, val_loader, test_loader, model, optimizer, num_epochs, c
                 views, labels = views.cuda(), labels.cuda()
                 optimizer.zero_grad()
                 outputs = model(views)
-                loss = criterion(outputs, labels)
+                loss = nn.functional.binary_cross_entropy_with_logits(outputs[0], labels)
                 loss.backward()
                 optimizer.step()
                 train_loss += loss.item() * views.size(0)
@@ -165,8 +165,8 @@ def train(train_loader, val_loader, test_loader, model, optimizer, num_epochs, c
                 all_labels.extend(labels.cpu().numpy())
 
             epoch_loss = train_loss / len(train_loader.dataset)
-            # current_lr = "Not relevant"
-            current_lr = optimizer.param_groups[0]['lr']
+            current_lr = "Not relevant"
+            # current_lr = optimizer.param_groups[0]['lr']
             print(f"Epoch {epoch+1}, Loss: {epoch_loss}, LR: {current_lr}")
             print('Training Classification Report:')
             print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
@@ -185,7 +185,7 @@ def train(train_loader, val_loader, test_loader, model, optimizer, num_epochs, c
 
                     views, labels = views.cuda(), labels.cuda()
                     outputs = model(views)
-                    loss = criterion(outputs, labels)
+                    loss = nn.functional.binary_cross_entropy_with_logits(outputs[0], labels)
                     val_loss += loss.item() * views.size(0)
 
                     preds = torch.argmax(outputs, dim=1)
@@ -193,7 +193,7 @@ def train(train_loader, val_loader, test_loader, model, optimizer, num_epochs, c
                     all_labels.extend(labels.cpu().numpy())
                 
             epoch_val_loss = val_loss / len(val_loader.dataset)
-            scheduler.step(epoch_val_loss)
+            # scheduler.step(epoch_val_loss)
             print(f'Epoch {epoch+1}/{num_epochs}, Validation Loss: {epoch_val_loss:.4f}')
             print('Validation Classification Report:')
             print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
@@ -230,7 +230,7 @@ def test(test_loader, model, criterion, epoch, num_epochs):
 
                 views, labels = views.cuda(), labels.cuda()
                 outputs = model(views)
-                loss = criterion(outputs, labels)
+                loss = nn.functional.binary_cross_entropy_with_logits(outputs[0], labels)
                 test_loss += loss.item() * views.size(0)
 
                 preds = torch.argmax(outputs, dim=1)
@@ -301,12 +301,12 @@ def main():
         # Blur
         transforms.RandomApply([transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.5),
         # Color
-        # transforms.RandomApply([transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.1)], p=0.8),
-        # transforms.RandomGrayscale(p=0.2),
+        transforms.RandomApply([transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.1)], p=0.8),
+        transforms.RandomGrayscale(p=0.2),
         # Dimension
-        # transforms.RandomHorizontalFlip(), 
-        # transforms.RandomRotation(degrees=15),
-        # transforms.CenterCrop(224),
+        transforms.RandomHorizontalFlip(), 
+        transforms.RandomRotation(degrees=15),
+        transforms.CenterCrop(224),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
@@ -335,19 +335,19 @@ def main():
 
     # weights = R3D_18_Weights.DEFAULT
     # self_supervised_model  = r3d_18(weights=weights)
-    weights = R2Plus1D_18_Weights.DEFAULT
-    self_supervised_model  = r2plus1d_18(weights=weights)
+    # weights = R2Plus1D_18_Weights.DEFAULT
+    # self_supervised_model  = r2plus1d_18(weights=weights)
 
-    # self_supervised_model = Inception3D(num_classes=2)
-    self_supervised_model.fc = nn.Identity()
+    self_supervised_model = Inception3D(num_classes=2)
+    # self_supervised_model.fc = nn.Identity()
 
     # Freeze all layers of the pre-trained model
-    for param in self_supervised_model.parameters():
-        param.requires_grad = False
+    # for param in self_supervised_model.parameters():
+    #     param.requires_grad = False
 
     # Add a linear layer on top for the classification task
-    num_ftrs = 512 #self_supervised_model.fc.in_features
-    self_supervised_model.fc = nn.Linear(num_ftrs, 2)  # Assuming binary classification
+    # num_ftrs = 512 #self_supervised_model.fc.in_features
+    # self_supervised_model.fc = nn.Linear(num_ftrs, 2)  # Assuming binary classification
 
     # self_supervised_model = Inception3D(num_classes=2).cuda()
     # self_supervised_model.fc = nn.Identity()
