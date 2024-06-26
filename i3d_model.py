@@ -1,3 +1,7 @@
+"""
+This script has been adopted from: https://doi.org/10.48550/arXiv.1705.07750 and edited for 3D video application.
+"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

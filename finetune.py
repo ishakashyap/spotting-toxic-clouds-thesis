@@ -8,10 +8,10 @@ import numpy as np
 import pandas as pd
 import torch
 import torchmetrics
+from torchvision import transforms
 from torch.cuda.amp import GradScaler, autocast
 import torch.nn as nn
 from torch.utils.data import DataLoader, random_split, Dataset
-from torchvision import transforms
 import torch.optim as optim
 from torchvision.io import read_video
 from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize, RandomHorizontalFlip, RandomApply, RandomRotation, GaussianBlur, RandomGrayscale, ColorJitter

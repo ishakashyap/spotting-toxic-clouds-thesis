@@ -1,3 +1,7 @@
+"""
+This script has been created to move videos from their source folder to a new train/val/test folder based on the split metadata file. The metadata was split in split_metadata.py.
+"""
+
 import os
 import shutil
 import json
@@ -29,9 +33,9 @@ def main():
     test_json = "./split/metadata_test_split_by_date.json"
 
     source_folder = "./videos"
-    train_destination = "./train_baseline"
-    val_destination = "./validation_baseline"
-    test_destination = "./test_baseline"
+    train_destination = "./train_set"
+    val_destination = "./validation_set"
+    test_destination = "./test_set"
 
     # Load filenames from json files
     train_files = load_filenames(train_json)
