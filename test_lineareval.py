@@ -227,9 +227,9 @@ def main():
     val_dataset = VideoDataset(val_folder, val_label_folder, transform=train_transforms)
     test_dataset = VideoDataset(test_folder, test_label_folder, transform=train_transforms)
 
-    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
-    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
-    test_loader = DataLoader(test_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True, num_workers=7, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=True, num_workers=7, pin_memory=True)
+    test_loader = DataLoader(test_dataset, batch_size=8, shuffle=True, num_workers=7, pin_memory=True)
 
     print("Videos are loaded!\n")
     sys.stdout.flush()
@@ -268,10 +268,10 @@ def main():
     #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     # Train and evaluate the model
-    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=3, scheduler=scheduler) # , patience=5, min_delta=0.001
+    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=20, scheduler=scheduler) # , patience=5, min_delta=0.001
 
     # Save the trained model
-    # torch.save(self_supervised_model.state_dict(), 'linear_eval_model.pth')
+    torch.save(self_supervised_model.state_dict(), 'linear_eval_model.pth')
 
 if __name__ == "__main__":
     main()
