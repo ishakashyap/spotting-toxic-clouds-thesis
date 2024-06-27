@@ -98,9 +98,12 @@ class VideoDataset(Dataset):
             print(f"Failed to load label: {video_path}")
             return None, None
         
-        label = torch.tensor(label, dtype=torch.int32)
+        label = torch.tensor(label, dtype=torch.int64)
+
+        label_one_hot = torch.zeros(2)
+        label_one_hot[label] = 1
         # label = adjust_labels(label)
-        return view, label
+        return view, label_one_hot
 
     def transform_video(self, video):
         transformed_frames = []
@@ -155,7 +158,7 @@ def train(train_loader, val_loader, test_loader, model, optimizer, num_epochs, c
                 views, labels = views.cuda(), labels.cuda()
                 optimizer.zero_grad()
                 outputs = model(views)
-                loss = nn.functional.binary_cross_entropy_with_logits(outputs, labels)
+                loss = criterion(outputs, labels)
                 loss.backward()
                 optimizer.step()
                 train_loss += loss.item() * views.size(0)
@@ -185,7 +188,7 @@ def train(train_loader, val_loader, test_loader, model, optimizer, num_epochs, c
 
                     views, labels = views.cuda(), labels.cuda()
                     outputs = model(views)
-                    loss = nn.functional.binary_cross_entropy_with_logits(outputs, labels)
+                    loss = criterion(outputs, labels)
                     val_loss += loss.item() * views.size(0)
 
                     preds = torch.argmax(outputs, dim=1)
@@ -230,7 +233,7 @@ def test(test_loader, model, criterion, epoch, num_epochs):
 
                 views, labels = views.cuda(), labels.cuda()
                 outputs = model(views)
-                loss = nn.functional.binary_cross_entropy_with_logits(outputs, labels)
+                loss = criterion(outputs, labels)
                 test_loss += loss.item() * views.size(0)
 
                 preds = torch.argmax(outputs, dim=1)
@@ -368,7 +371,7 @@ def main():
 
     self_supervised_model = self_supervised_model.to(device)
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.BCEWithLogitsLoss()
     # Changed lr to 0.1 and wd to 1e-6 for i3d
     optimizer = optim.SGD(self_supervised_model.parameters(), lr=0.1, momentum=0.9, weight_decay=1e-6)
     scheduler = ReduceLROnPlateau(optimizer, mode='min')
