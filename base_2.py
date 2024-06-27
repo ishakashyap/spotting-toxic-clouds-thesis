@@ -165,8 +165,8 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
                 all_labels.extend(labels.cpu().numpy())
 
             epoch_loss = train_loss / len(train_loader.dataset)
-            current_lr = "Not relevant"
-            # current_lr = optimizer.param_groups[0]['lr']
+            # current_lr = "Not relevant"
+            current_lr = optimizer.param_groups[0]['lr']
             print(f"Epoch {epoch+1}, Loss: {epoch_loss}, LR: {current_lr}")
             print('Training Classification Report:')
             print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
@@ -193,7 +193,7 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
                     all_labels.extend(labels.cpu().numpy())
                 
             epoch_val_loss = val_loss / len(val_loader.dataset)
-            # scheduler.step(epoch_val_loss)
+            scheduler.step(epoch_val_loss)
             print(f'Epoch {epoch+1}/{num_epochs}, Validation Loss: {epoch_val_loss:.4f}')
             print('Validation Classification Report:')
             print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
@@ -299,10 +299,10 @@ def main():
     train_transforms = transforms.Compose([
         transforms.Resize(224), 
         # Blur
-        # transforms.RandomApply([transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.5),
+        transforms.RandomApply([transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.5),
         # Color
-        # transforms.RandomApply([transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.1)], p=0.8),
-        # transforms.RandomGrayscale(p=0.2),
+        transforms.RandomApply([transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.1)], p=0.8),
+        transforms.RandomGrayscale(p=0.2),
         # Dimension
         transforms.RandomHorizontalFlip(), 
         transforms.RandomRotation(degrees=15),
@@ -324,9 +324,9 @@ def main():
     val_dataset = VideoDataset(val_folder, val_label_folder, transform=train_transforms)
     test_dataset = VideoDataset(test_folder, test_label_folder, transform=train_transforms)
 
-    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
-    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
-    test_loader = DataLoader(test_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True, num_workers=7, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=True, num_workers=7, pin_memory=True)
+    test_loader = DataLoader(test_dataset, batch_size=8, shuffle=True, num_workers=7, pin_memory=True)
 
     print("Videos are loaded!")
     sys.stdout.flush()
@@ -376,10 +376,10 @@ def main():
     #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     # Train and evaluate the model
-    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=3, scheduler=scheduler) # , patience=5, min_delta=0.001
+    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=20, scheduler=scheduler) # , patience=5, min_delta=0.001
 
     # Save the trained model
-    # torch.save(self_supervised_model.state_dict(), 'baseline_model_plateau.pth')
+    torch.save(self_supervised_model.state_dict(), 'baseline_model.pth')
 
 if __name__ == "__main__":
     main()
