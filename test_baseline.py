@@ -98,7 +98,7 @@ class VideoDataset(Dataset):
             print(f"Failed to load label: {video_path}")
             return None, None
         
-        label = torch.tensor(label)
+        label = torch.tensor(label, dtype=torch.int32)
         # label = adjust_labels(label)
         return view, label
 
@@ -155,7 +155,6 @@ def train(train_loader, val_loader, test_loader, model, optimizer, num_epochs, c
                 views, labels = views.cuda(), labels.cuda()
                 optimizer.zero_grad()
                 outputs = model(views)
-                labels = labels.astype(int)
                 loss = nn.functional.binary_cross_entropy_with_logits(outputs, labels)
                 loss.backward()
                 optimizer.step()
@@ -186,7 +185,6 @@ def train(train_loader, val_loader, test_loader, model, optimizer, num_epochs, c
 
                     views, labels = views.cuda(), labels.cuda()
                     outputs = model(views)
-                    labels = labels.astype(int)
                     loss = nn.functional.binary_cross_entropy_with_logits(outputs, labels)
                     val_loss += loss.item() * views.size(0)
 
@@ -232,7 +230,6 @@ def test(test_loader, model, criterion, epoch, num_epochs):
 
                 views, labels = views.cuda(), labels.cuda()
                 outputs = model(views)
-                labels = labels.astype(int)
                 loss = nn.functional.binary_cross_entropy_with_logits(outputs, labels)
                 test_loss += loss.item() * views.size(0)
 
