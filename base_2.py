@@ -324,9 +324,9 @@ def main():
     val_dataset = VideoDataset(val_folder, val_label_folder, transform=train_transforms)
     test_dataset = VideoDataset(test_folder, test_label_folder, transform=train_transforms)
 
-    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True, num_workers=7, pin_memory=True)
-    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=True, num_workers=7, pin_memory=True)
-    test_loader = DataLoader(test_dataset, batch_size=8, shuffle=True, num_workers=7, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
+    test_loader = DataLoader(test_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
 
     print("Videos are loaded!")
     sys.stdout.flush()
