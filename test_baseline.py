@@ -165,7 +165,7 @@ def train(train_loader, val_loader, test_loader, model, optimizer, num_epochs, c
 
                 preds = torch.argmax(outputs, dim=1)
                 all_preds.extend(preds.cpu().numpy())
-                all_labels.extend(labels.cpu().numpy())
+                all_labels.extend(torch.argmax(labels, dim=1).cpu().numpy())
 
             epoch_loss = train_loss / len(train_loader.dataset)
             current_lr = "Not relevant"
@@ -193,7 +193,7 @@ def train(train_loader, val_loader, test_loader, model, optimizer, num_epochs, c
 
                     preds = torch.argmax(outputs, dim=1)
                     all_preds.extend(preds.cpu().numpy())
-                    all_labels.extend(labels.cpu().numpy())
+                    all_labels.extend(torch.argmax(labels, dim=1).cpu().numpy())
                 
             epoch_val_loss = val_loss / len(val_loader.dataset)
             # scheduler.step(epoch_val_loss)
@@ -238,7 +238,7 @@ def test(test_loader, model, criterion, epoch, num_epochs):
 
                 preds = torch.argmax(outputs, dim=1)
                 all_preds.extend(preds.cpu().numpy())
-                all_labels.extend(labels.cpu().numpy())
+                all_labels.extend(torch.argmax(labels, dim=1).cpu().numpy())
 
         epoch_loss = test_loss / len(test_loader.dataset)
         print(f'Test Loss: {epoch_loss:.4f}')
