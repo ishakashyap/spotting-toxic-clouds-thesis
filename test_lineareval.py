@@ -162,7 +162,7 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
                 all_labels.extend(labels.cpu().numpy())
 
         epoch_val_loss = val_loss / len(val_loader.dataset)
-        scheduler.step(epoch_val_loss)
+        # scheduler.step(epoch_val_loss)
         print(f'Epoch {epoch+1}/{num_epochs}, Validation Loss: {epoch_val_loss:.4f}')
         print('Validation Classification Report:')
         print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
