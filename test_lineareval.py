@@ -162,7 +162,7 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
                 all_labels.extend(labels.cpu().numpy())
 
         epoch_val_loss = val_loss / len(val_loader.dataset)
-        # scheduler.step(epoch_val_loss)
+        scheduler.step(epoch_val_loss)
         print(f'Epoch {epoch+1}/{num_epochs}, Validation Loss: {epoch_val_loss:.4f}')
         print('Validation Classification Report:')
         print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
@@ -268,7 +268,7 @@ def main():
     #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     # Train and evaluate the model
-    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=20, scheduler=scheduler) # , patience=5, min_delta=0.001
+    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=10, scheduler=scheduler) # , patience=5, min_delta=0.001
 
     # Save the trained model
     torch.save(self_supervised_model.state_dict(), 'linear_eval_model.pth')
