@@ -7,8 +7,8 @@
 #SBATCH --job-name=base_model
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
-#SBATCH --time=4:00:00
-#SBATCH --output=jobs/outputs/baseline_r21d_col2.out
+#SBATCH --time=15:00:00
+#SBATCH --output=jobs/outputs/final_baseline_r21d_color.out
 
 cd /projects/0/prjs0935/spotting-toxic-clouds-thesis
 module load 2022

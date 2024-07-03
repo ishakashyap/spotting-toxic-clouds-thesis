@@ -369,14 +369,14 @@ def main():
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(self_supervised_model.parameters(), lr=1e-3, momentum=0.9, weight_decay=1e-4)
-    scheduler = ReduceLROnPlateau(optimizer, mode='min')
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=2)
     # scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
 
     # if 'optimizer_state_dict' in checkpoint:
     #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     # Train and evaluate the model
-    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=3, scheduler=scheduler) # , patience=5, min_delta=0.001
+    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=15, scheduler=scheduler) # , patience=5, min_delta=0.001
 
     # Save the trained model
     torch.save(self_supervised_model.state_dict(), 'baseline_model.pth')

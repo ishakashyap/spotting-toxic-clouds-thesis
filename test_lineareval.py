@@ -204,12 +204,12 @@ def main():
 
     train_transforms = transforms.Compose([
         transforms.Resize(224), 
-        transforms.RandomApply([transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.5),
+        # transforms.RandomApply([transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.5),
         transforms.RandomApply([transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.1)], p=0.8),
         transforms.RandomGrayscale(p=0.2),
-        transforms.RandomHorizontalFlip(), 
-        transforms.RandomRotation(degrees=15),
-        transforms.CenterCrop(224),
+        # transforms.RandomHorizontalFlip(), 
+        # transforms.RandomRotation(degrees=15),
+        # transforms.CenterCrop(224),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
@@ -262,13 +262,13 @@ def main():
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(self_supervised_model.parameters(), lr=1e-3, momentum=0.9, weight_decay=1e-4)
-    scheduler = ReduceLROnPlateau(optimizer, mode='min')
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=2)
 
     # if 'optimizer_state_dict' in checkpoint:
     #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     # Train and evaluate the model
-    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=3, scheduler=scheduler) # , patience=5, min_delta=0.001
+    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=15, scheduler=scheduler) # , patience=5, min_delta=0.001
 
     # Save the trained model
     torch.save(self_supervised_model.state_dict(), 'linear_eval_model.pth')
