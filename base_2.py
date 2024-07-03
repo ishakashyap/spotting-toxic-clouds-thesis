@@ -299,14 +299,14 @@ def main():
     train_transforms = transforms.Compose([
         transforms.Resize(224), 
         # Blur
-        transforms.RandomApply([transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.5),
+        # transforms.RandomApply([transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.5),
         # Color
         transforms.RandomApply([transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.1)], p=0.8),
         transforms.RandomGrayscale(p=0.2),
         # Dimension
-        transforms.RandomHorizontalFlip(), 
-        transforms.RandomRotation(degrees=15),
-        transforms.CenterCrop(224),
+        # transforms.RandomHorizontalFlip(), 
+        # transforms.RandomRotation(degrees=15),
+        # transforms.CenterCrop(224),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
