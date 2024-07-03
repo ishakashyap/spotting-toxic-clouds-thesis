@@ -376,7 +376,7 @@ def main():
     #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     # Train and evaluate the model
-    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=10, scheduler=scheduler) # , patience=5, min_delta=0.001
+    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=3, scheduler=scheduler) # , patience=5, min_delta=0.001
 
     # Save the trained model
     torch.save(self_supervised_model.state_dict(), 'baseline_model.pth')
