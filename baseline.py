@@ -1,165 +1,18 @@
 import os
-import argparse
-import time
-import gc
-import random
+import sys
 import json
-import numpy as np
-import pandas as pd
 import torch
-import torchmetrics
-from torch.cuda.amp import GradScaler, autocast
 import torch.nn as nn
-from torch.utils.data import DataLoader, random_split, Dataset
-from torchvision import transforms
 import torch.optim as optim
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torchvision.io import read_video
-from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize, RandomHorizontalFlip, RandomApply, RandomRotation, GaussianBlur, RandomGrayscale, ColorJitter
+from torchvision import transforms
+from torch.utils.data import DataLoader, Dataset
 from torchvision.transforms import functional as F
-from torchvision.models.video import r3d_18, R3D_18_Weights
-from PIL import Image
-from sklearn.metrics import accuracy_score
-import pytorch_lightning as pl
-from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, EarlyStopping
-from train import SimCLRVideo
-import logging
+from torchvision.models.video import r3d_18, R3D_18_Weights,  r2plus1d_18, R2Plus1D_18_Weights
+from sklearn.metrics import classification_report
 
-logging.basicConfig(level=logging.INFO)
-
-
-def adjust_labels(y):
-    # Detach y to ensure no gradients are backpropagated through the label adjustment
-    y = y.detach()
-
-    # Initialize all labels to a default value (e.g., -1 for filtering or 0 if using binary classification)
-    y_adjusted = torch.full_like(y, -1)
-
-    # Mapping specific labels
-    y_adjusted[y == 47] = 1  # Gold standard positive
-    y_adjusted[y == 32] = 0  # Gold standard negative
-    y_adjusted[y == 23] = 1  # Strong positive
-    y_adjusted[y == 16] = 0  # Strong negative
-    y_adjusted[y == 19] = 1  # Weak positive
-    y_adjusted[y == 20] = 0  # Weak negative
-
-    return y_adjusted
-
-class SimCLR_eval(pl.LightningModule):
-    def __init__(self, lr, num_classes=2):
-        super().__init__()
-        self.lr = lr
-
-        weights = R3D_18_Weights.DEFAULT
-        self.model = r3d_18(weights=weights)
-        self.model.fc = nn.Linear(self.model.fc.in_features, num_classes)
-
-        self.loss = nn.CrossEntropyLoss()
-        self.accuracy = torchmetrics.Accuracy(top_k=1, task='binary')
-        self.top5_accuracy = torchmetrics.Accuracy(top_k=5, task='binary')
-        self.epoch_accuracies = []
-        self.scaler = GradScaler()
-
-    def forward(self, x):
-        return self.model(x)
-
-    def training_step(self, batch, batch_idx):
-        try:
-            self.model.train()
-            x, y = batch
-            y = adjust_labels(y)  # Make sure this function does not retain any graph
-
-            with torch.no_grad():
-                logits = self.forward(x)  # Get model predictions
-            
-            loss = self.loss(logits, y)
-
-            self.optimizer.zero_grad()
-
-            # Perform backward pass and scale loss under autocast
-            loss.requires_grad = True
-            loss.backward()
-            self.optimizer.step()
-
-            self.model.eval()
-            # with torch.no_grad():
-            _, preds = torch.max(logits, dim=1)
-            acc = self.accuracy(preds, y)
-            top5_acc = self.top5_accuracy(preds, y)
-
-            self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
-            self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
-
-            avg_acc = self.accuracy.update(preds, y)
-            # avg_top5_acc = self.top5_accuracy.update(preds, y)
-
-            self.accuracy.reset()
-            self.top5_accuracy.reset()
-
-        except Exception as e:
-            logging.error('Error in training_step: ', e)
-
-        return {'loss': loss, 'train_acc': acc, 'train_top5_acc': top5_acc}
-    
-    # def on_train_epoch_end(self):
-    #     avg_acc = self.accuracy.compute()
-    #     avg_top5_acc = self.top5_accuracy.compute()
-    #     self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
-    #     self.log('avg_train_acc', avg_acc, sync_dist=True)
-    #     self.log('avg_train_top5_acc', avg_top5_acc, sync_dist=True)
-    #     self.accuracy.reset()
-    #     self.top5_accuracy.reset()
-    
-    # def on_train_end(self):
-    #     overall_avg_accuracy = np.mean(self.epoch_accuracies)
-    #     print(f'Overall Average Top-1 Accuracy across all epochs: {overall_avg_accuracy}')
-
-    def validation_step(self, batch, batch_idx):
-    #    with torch.no_grad():
-        try:
-            x, y = batch
-            y = adjust_labels(y)
-            logits = self(x)
-            loss = self.loss(logits, y)
-            _, preds = torch.max(logits, dim=1)
-            acc = self.accuracy(preds, y)
-            top5_acc = self.top5_accuracy(preds, y)
-
-            self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
-            self.log('val_acc', acc, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
-
-            avg_acc = self.accuracy.update(preds, y)
-            # avg_top5_acc = self.top5_accuracy.update(preds, y)
-        except Exception as e:
-            logging.error('Error in validation step: ', e)
-        return {'loss': loss, 'val_acc': acc, 'val_top5_acc': top5_acc}
-    
-    # def on_validation_epoch_end(self):
-    #     avg_acc = self.accuracy.compute()
-    #     avg_top5_acc = self.top5_accuracy.compute()
-    #     self.epoch_accuracies.append(avg_acc.item())  # Store the average Top-1 accuracy of the epoch
-    #     self.log('avg_val_acc', avg_acc, sync_dist=True)
-    #     self.log('avg_val_top5_acc', avg_top5_acc, sync_dist=True)
-    #     self.accuracy.reset()
-    #     self.top5_accuracy.reset()
-    
-    # def on_validation_end(self):
-    #     overall_avg_accuracy = np.mean(self.epoch_accuracies)
-    #     print(f'Overall Average Top-1 Validation Accuracy across all epochs: {overall_avg_accuracy}')
-
-    # def on_epoch_end(self):
-    #     # Get the average accuracy from the current epoch for both training and validation
-    #     train_acc = self.trainer.callback_metrics.get('train_acc')
-    #     val_acc = self.trainer.callback_metrics.get('val_acc')
-        
-    #     # Create or open the log file and append the current epoch's accuracies
-    #     with open('epoch_accuracy_log.txt', 'a') as f:
-    #         f.write(f'Epoch {self.current_epoch}: Train Acc: {train_acc:.4f}, Val Acc: {val_acc:.4f}\n')
-
-    def configure_optimizers(self):
-        self.optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
-        return self.optimizer
-
-class LabeledDataset(Dataset):
+class VideoDataset(Dataset):
     def __init__(self, folder_path, labels_json_path, transform=None):
         self.folder_path = folder_path
         self.transform = transform
@@ -171,20 +24,23 @@ class LabeledDataset(Dataset):
         self.labels = self._load_labels(labels_json_path)
         self.video_files = self.validate_videos_and_labels()
 
+        self.targets = [self.labels[video_file] for video_file in self.video_files]
+        self.targets = torch.tensor(self.targets)
+
     def _load_labels(self, labels_json_path):
         with open(labels_json_path, 'r') as f:
             labels_json = json.load(f)
         # Append the .mp4 extension to the filenames
-        labels = {item['file_name'] + '.mp4': item['label_state_admin'] 
+        labels = {item['file_name'] + '.mp4': item['label'] 
                     for item in labels_json 
-                    if item['label_state_admin'] is not None and item['label_state_admin'] != -1}
+                    if item['label'] is not None and item['label'] != -1}
         return labels
     
     def validate_videos_and_labels(self):
-        # Keep only videos for which we have a non-None label and can be loaded
+        # Keep only videos for which we have a valid label and can be loaded
         valid_videos = []
         for video_file in os.listdir(self.folder_path):
-            if video_file in self.labels:  # Checks if video has a non-None label
+            if video_file in self.labels:  # Checks if video has a valid label
                 video_path = os.path.join(self.folder_path, video_file)
                 try:
                     video, _, _ = read_video(video_path, pts_unit='sec')
@@ -204,7 +60,7 @@ class LabeledDataset(Dataset):
         # Load the video
         video, _, _ = read_video(video_path, pts_unit='sec')
 
-        if video.nelement() == 0:  # or any other condition indicating failure
+        if video.nelement() == 0:
             print(f"Failed to load video: {video_path}")
             return None, None
     
@@ -213,13 +69,14 @@ class LabeledDataset(Dataset):
         # Apply transformation to get a single view of the videos
         view = self.transform_video(video)
         
-        # Get the label for the current video, default to None if not found
+        # Get the label for the current video
         label = self.labels.get(video_file, None)
 
         if label is None:
             print(f"Failed to load label: {video_path}")
             return None, None
-
+        
+        label = torch.tensor(label)
         return view, label
 
     def transform_video(self, video):
@@ -230,107 +87,171 @@ class LabeledDataset(Dataset):
                 frame = self.transform(frame)
             transformed_frames.append(frame)
         video_tensor = torch.stack(transformed_frames)
-        return video_tensor.permute(1, 0, 2, 3) 
+        return video_tensor.permute(1, 0, 2, 3)
 
-def parse_args():
-    parser = argparse.ArgumentParser(description='Baseline')
-    # parser.add_argument('--dataset', type=str, default='/.videos', help='path to videos')
-    parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
-    parser.add_argument('--momentum', type=float, default=9e-1, help='momentum')
-    parser.add_argument('--wd', type=float, default=5e-4, help='weight decay')
-    parser.add_argument('--log', type=str, help='log directory')
-    # parser.add_argument('--ckpt', type=str, help='checkpoint path')
-    parser.add_argument('--epochs', type=int, default=150, help='number of total epochs to run')
-    parser.add_argument('--start-epoch', type=int, default=1, help='manual epoch number (useful on restarts)')
-    parser.add_argument('--bs', type=int, default=8, help='mini-batch size')
-    parser.add_argument('--workers', type=int, default=2, help='number of data loading workers')
-    parser.add_argument('--pf', type=int, default=100, help='print frequency every batch')
-    parser.add_argument('--seed', type=int, default=632, help='seed for initializing training.')
-    args = parser.parse_args()
-    return args
+def train(train_loader, val_loader, test_loader, model, optimizer, criterion, num_epochs, scheduler):
+    try:
+        for epoch in range(num_epochs):
+            model.train()
+            train_loss = 0.0
+            all_preds = []
+            all_labels = []
 
-if __name__ == '__main__':
-    args = parse_args()
+            for views, labels in train_loader:
+                if views is None or labels is None:
+                    continue
 
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
-    torch.set_float32_matmul_precision('medium')
-    torch.backends.cuda.matmul.allow_tf32 = True
+                views, labels = views.cuda(), labels.cuda()
+                optimizer.zero_grad()
+                outputs = model(views)
+                loss = criterion(outputs, labels)
+                loss.backward()
+                optimizer.step()
+                train_loss += loss.item() * views.size(0)
 
-    early_stop = EarlyStopping(
-            monitor='train_loss',
-            min_delta=0.0,
-            patience=3,
-            verbose=True,
-            mode='min'
-    )
+                preds = torch.argmax(outputs, dim=1)
+                all_preds.extend(preds.cpu().numpy())
+                all_labels.extend(labels.cpu().numpy())
 
-    # Currenly commented out transformation in dataset loader
-    train_transforms = Compose([
-        Resize(224), 
-        RandomApply([GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.5),
-        RandomApply([ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.1)], p=0.8),
-        RandomGrayscale(p=0.2),
-        RandomHorizontalFlip(), 
-        # RandomRotation(degrees=15),
-        # CenterCrop(224),
-        ToTensor(),
-        Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            epoch_loss = train_loss / len(train_loader.dataset)
+            current_lr = optimizer.param_groups[0]['lr']
+            print(f"Epoch {epoch+1}, Loss: {epoch_loss}, LR: {current_lr}")
+            print('Training Classification Report:')
+            print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
+            sys.stdout.flush()
+
+            model.eval()
+            val_loss = 0.0
+            all_preds = []
+            all_labels = []
+
+            with torch.no_grad():
+                for views, labels in val_loader:
+                    if views is None or labels is None:
+                        continue
+
+                    views, labels = views.cuda(), labels.cuda()
+                    outputs = model(views)
+                    loss = criterion(outputs, labels)
+                    val_loss += loss.item() * views.size(0)
+
+                    preds = torch.argmax(outputs, dim=1)
+                    all_preds.extend(preds.cpu().numpy())
+                    all_labels.extend(labels.cpu().numpy())
+                
+            epoch_val_loss = val_loss / len(val_loader.dataset)
+            scheduler.step(epoch_val_loss)
+            print(f'Epoch {epoch+1}/{num_epochs}, Validation Loss: {epoch_val_loss:.4f}')
+            print('Validation Classification Report:')
+            print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
+            sys.stdout.flush()
+
+            test(test_loader=test_loader, model=model, criterion=criterion, epoch=epoch, num_epochs=num_epochs)
+        
+    except Exception as e:
+        print('Error occurred during training or validation: ', e)
+
+def test(test_loader, model, criterion, epoch, num_epochs):
+    model.eval()
+    test_loss = 0.0
+    all_preds = []
+    all_labels = []
+
+    try:
+        with torch.no_grad():
+            for views, labels in test_loader:
+                if views is None or labels is None:
+                    continue
+
+                views, labels = views.cuda(), labels.cuda()
+                outputs = model(views)
+                loss = criterion(outputs, labels)
+                test_loss += loss.item() * views.size(0)
+
+                preds = torch.argmax(outputs, dim=1)
+                all_preds.extend(preds.cpu().numpy())
+                all_labels.extend(labels.cpu().numpy())
+
+        epoch_loss = test_loss / len(test_loader.dataset)
+        print(f'Test Loss: {epoch_loss:.4f}')
+        print(f'Epoch{epoch  +1}/{num_epochs}, Test Classification Report:')
+        print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
+        sys.stdout.flush()
+    
+    except Exception as e:
+        print('Error occurred during testing: ', e)
+
+def main():
+
+    print("Start loading videos...\n")
+    sys.stdout.flush()
+
+    data_transforms = transforms.Compose([
+        transforms.Resize(224), 
+        # Blur augmentation
+        transforms.RandomApply([transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.5),
+        # Color augmentation
+        transforms.RandomApply([transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.1)], p=0.8),
+        transforms.RandomGrayscale(p=0.2),
+        # Rotational augmentation
+        transforms.RandomHorizontalFlip(), 
+        transforms.RandomRotation(degrees=15),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
     
-    train_folder = "./train_baseline"
+    train_folder = "./train_set"
     train_label_folder = "./split/metadata_train_split_by_date.json"
 
-    val_folder = "./validation_baseline"
+    val_folder = "./validation_set"
     val_label_folder = "./split/metadata_validation_split_by_date.json"
-    
-    test_folder = "./test_baseline"
+
+    test_folder = "./test_set"
     test_label_folder = "./split/metadata_test_split_by_date.json"
 
-    train_dataset = LabeledDataset(train_folder, train_label_folder, transform=train_transforms)
-    val_dataset = LabeledDataset(val_folder, val_label_folder, transform=train_transforms)
-    # test_dataset = LabeledDataset(test_folder, test_label_folder, transform=train_transforms)
+    train_dataset = VideoDataset(train_folder, train_label_folder, transform=data_transforms)
+    val_dataset = VideoDataset(val_folder, val_label_folder, transform=data_transforms)
+    test_dataset = VideoDataset(test_folder, test_label_folder, transform=data_transforms)
 
-    # TODO Check rise paper for split technique, split by cam view, check split_metadata.json
-    # train_size = int(0.8 * len(full_dataset))
-    # val_size = len(full_dataset) - train_size
-    # train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
+    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
+    test_loader = DataLoader(test_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
 
-    # DataLoader for the training and validation sets
-    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
-    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=0, pin_memory=True)
-
-
-    pl.seed_everything(42)  # For reproducibility
-
-    # model = SimCLRVideoLinearEval(lr=1e-3, hidden_dim=224, weight_decay=5e-4, num_classes=2)
-    model = SimCLR_eval(lr=0.01, num_classes=2)
-    # model.eval()
-
-    # Update to the correct class name and possibly adjust for any required initialization arguments
-    # model_state_dict = checkpoint['state_dict']
-    # optimizer_state_dict = checkpoint.get('optimizer_state', None)
-    # sim_model = SimCLRVideo.load_from_checkpoint(pretrained_filename)
-    # backbone_model = sim_model.model
-    # model = SimCLR_eval(lr=1e-3, model=None, fine_tune=True, linear_eval=False, accumulation_steps=20)
+    print("Videos are loaded!")
+    sys.stdout.flush()
     
-    # checkpoint = torch.load(pretrained_filename, map_location='cpu')
-    # # print(checkpoint.keys())
-    # for key in list(checkpoint.keys()):
-    #     print(key)
-    #     if 'model.' in key:
-    #         checkpoint[key.replace('model.', '')] = checkpoint[key]
-    #         del checkpoint[key]
-    # model.load_state_dict(checkpoint)
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    # fine_tuning_model = SimCLR_eval(lr=1e-3, model=backbone_model, fine_tune=True, linear_eval=False, accumulation_steps=20)
-    # optimizer = optim.Adam(model.parameters(), lr=1e-2)
+    # Uncomment to test R3D
+    # weights = R3D_18_Weights.DEFAULT
+    # self_supervised_model  = r3d_18(weights=weights)
 
-    trainer = pl.Trainer(
-        max_epochs=50,
-        accelerator="gpu" if torch.cuda.is_available() else "cpu",
-        callbacks=[ModelCheckpoint(dirpath='./checkpoints/', monitor='train_acc', mode='max')], log_every_n_steps=2
-    )
+    # Comment to test R3D
+    weights = R2Plus1D_18_Weights.DEFAULT
+    self_supervised_model  = r2plus1d_18(weights=weights)
 
-    # Start the training and validation process
-    trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=val_loader)
+    # Freeze all layers of the pre-trained model
+    for param in self_supervised_model.parameters():
+        param.requires_grad = False
+
+    self_supervised_model.fc = nn.Identity()
+
+    # Add a linear layer on top for the classification task
+    num_ftrs = 512 
+    self_supervised_model.fc = nn.Linear(num_ftrs, 2)  # Binary classification
+
+    self_supervised_model = self_supervised_model.to(device)
+
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.SGD(self_supervised_model.parameters(), lr=1e-3, momentum=0.9, weight_decay=1e-4)
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=2)
+
+    # Train and evaluate the model
+    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=15, scheduler=scheduler)
+
+    # Save the trained model
+    torch.save(self_supervised_model.state_dict(), 'baseline_model.pth')
+
+if __name__ == "__main__":
+    main()

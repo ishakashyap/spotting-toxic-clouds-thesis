@@ -14,4 +14,4 @@ module load Anaconda3/2022.05
 
 source activate dl2023
 git pull origin main
-srun python train.py --mode train
+srun python train.py

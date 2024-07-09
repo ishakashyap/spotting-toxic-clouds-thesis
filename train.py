@@ -1,24 +1,14 @@
 import os
-import argparse
-import time
-import gc
-import random
-import json
-import numpy as np
-import pandas as pd
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, random_split, Dataset
 from torchvision import transforms
 import torch.optim as optim
 from torchvision.io import read_video
-from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize, RandomHorizontalFlip, RandomApply, RandomRotation, GaussianBlur, RandomGrayscale, ColorJitter
 from torchvision.transforms import functional as F
 from torchvision.models.video import r3d_18, R3D_18_Weights
-from PIL import Image
-from sklearn.metrics import accuracy_score
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, EarlyStopping
+from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
 class SimCLRVideo(pl.LightningModule):
 
@@ -30,7 +20,7 @@ class SimCLRVideo(pl.LightningModule):
         # Use a 3D CNN model as base model for video data
         weights = R3D_18_Weights.DEFAULT
         self.model = r3d_18(weights=weights)
-        # self.model = r3d_18(pretrained=True)  # Pretrained 3D ResNet
+
         self.model.fc = nn.Identity()  # Remove the final fully connected layer
 
         # The MLP head for projection
@@ -41,18 +31,12 @@ class SimCLRVideo(pl.LightningModule):
             nn.Linear(4 * hidden_dim, hidden_dim),
         )
 
-        # self.fc = nn.Linear(224, 2)
-        # TODO: RUN AGAIN WITH NEW PARAMS
-
     def forward(self, x):
         # Extract features
         x = self.model(x)
 
         # Pass through the projection head
         x = self.projection_head(x)
-
-        # Final classification layer
-        # x = self.fc(x)
         return x
 
 
@@ -127,88 +111,45 @@ class SimCLRDataset(Dataset):
 
         return video_tensor.permute(1, 0, 2, 3)  # Reshape to (C, T, H, W) for model
 
-def parse_args():
-    parser = argparse.ArgumentParser(description='Video Classification')
-    parser.add_argument('--mode', type=str, default='train', help='train/test')
-    parser.add_argument('--model', type=str, default='simclr', help='simclr/swav')
-    # parser.add_argument('--dataset', type=str, default='/.videos', help='path to videos')
-    parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
-    parser.add_argument('--momentum', type=float, default=9e-1, help='momentum')
-    parser.add_argument('--wd', type=float, default=5e-4, help='weight decay')
-    parser.add_argument('--log', type=str, help='log directory')
-    # parser.add_argument('--ckpt', type=str, help='checkpoint path')
-    parser.add_argument('--epochs', type=int, default=50, help='number of total epochs to run')
-    parser.add_argument('--start-epoch', type=int, default=1, help='manual epoch number (useful on restarts)')
-    parser.add_argument('--bs', type=int, default=8, help='mini-batch size')
-    parser.add_argument('--workers', type=int, default=2, help='number of data loading workers')
-    parser.add_argument('--pf', type=int, default=100, help='print frequency every batch')
-    parser.add_argument('--seed', type=int, default=632, help='seed for initializing training.')
-    args = parser.parse_args()
-    return args
-
 if __name__ == '__main__':
-    args = parse_args()
-
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     CHECKPOINT_PATH = "./checkpoints"
     os.makedirs(CHECKPOINT_PATH, exist_ok=True)
     torch.set_float32_matmul_precision('medium')
 
-    if args.mode == 'train':
-         # Try different transformations
-        train_transforms = Compose([
-            Resize(224), 
-            RandomApply([GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.5),
-            RandomApply([ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.1)], p=0.8),
-            RandomGrayscale(p=0.2),
-            RandomHorizontalFlip(), 
-            RandomRotation(degrees=15),
-            CenterCrop(224),
-            ToTensor(),
-            Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-        ])
-        
-        train_folder = "./full_dataset"
-        label_folder = "./metadata_12012023.json"
-        dataset = SimCLRDataset(train_folder, transform=train_transforms)
-        train_loader = DataLoader(dataset, batch_size=8, shuffle=True, num_workers=7, persistent_workers=True)
+    # Try different transformations
+    train_transforms = transforms.Compose([
+        transforms.Resize(224), 
+        transforms.RandomApply([transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.5),
+        transforms.RandomApply([transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.1)], p=0.8),
+        transforms.RandomGrayscale(p=0.2),
+        transforms.RandomHorizontalFlip(), 
+        transforms.RandomRotation(degrees=15),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+    
+    train_folder = "./full_dataset"
+    dataset = SimCLRDataset(train_folder, transform=train_transforms)
+    train_loader = DataLoader(dataset, batch_size=8, shuffle=True, num_workers=7, persistent_workers=True)
 
-        early_stop = EarlyStopping(
-            monitor='train_loss',
-            min_delta=0.0,
-            patience=3,
-            verbose=True,
-            mode='min'
-        )
+    pl.seed_everything(42)  # For reproducibility
 
-        pl.seed_everything(42)  # For reproducibility
+    model = SimCLRVideo(hidden_dim=224, lr=1e-3, temperature=0.07, weight_decay=1e-4, max_epochs=25)
 
-        # pretrained_filename = './checkpoints/Full_SimCLR_test.ckpt/lightning_logs/version_1/checkpoints/epoch=18-step=5700.ckpt' #os.path.join(CHECKPOINT_PATH, 'SimCLR.ckpt')
-        # if os.path.isfile(pretrained_filename):
-        #     print(f'Found pretrained model at {pretrained_filename}, loading...')
-        #     # Update to the correct class name and possibly adjust for any required initialization arguments
-        #     model = SimCLRVideo.load_from_checkpoint(pretrained_filename)
-        #     # optimizer = optim.Adam(model.parameters(), lr=1e-2)
+    trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, 'final_data.pth'),
+    accelerator="gpu" if torch.cuda.is_available() else "cpu",
+    max_epochs=25,
+    callbacks=[
+        ModelCheckpoint(save_weights_only=True, mode='min', monitor='train_loss'),
+        LearningRateMonitor('epoch')])
+    
+    trainer.fit(model, train_loader)
 
-        # Update to the correct class name and pass necessary initialization arguments
-        # else:
-        model = SimCLRVideo(hidden_dim=224, lr=1e-3, temperature=0.07, weight_decay=1e-4, max_epochs=25)
-        # optimizer = optim.Adam(model.parameters(), lr=1e-2)
-        trainer = pl.Trainer(default_root_dir=os.path.join(CHECKPOINT_PATH, 'final_data.pth'),
-        accelerator="gpu" if torch.cuda.is_available() else "cpu",
-        # devices=1 if torch.cuda.is_available() else None,  # Adjust as per your setup
-        max_epochs=25,
-        callbacks=[
-            ModelCheckpoint(save_weights_only=True, mode='min', monitor='train_loss'),
-            LearningRateMonitor('epoch')])
-        
-        trainer.fit(model, train_loader)
-        optimizer = trainer.optimizers[0]
+    torch.save({
+        'model_state_dict': model.state_dict(),
+    }, 'final_data.pth')
 
-        torch.save({
-            'model_state_dict': model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
-        }, 'final_data.pth')
-
-        print('Training complete')
+    print('Training complete')

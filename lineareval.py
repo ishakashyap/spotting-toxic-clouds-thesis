@@ -2,19 +2,15 @@ import os
 import sys
 import json
 import torch
-import numpy as np
 import torch.nn as nn
-import matplotlib.pyplot as plt
 import torch.optim as optim
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torchvision.io import read_video
-from i3d_model import Inception3D
-from collections import Counter
-from torchvision import transforms, models
-from torch.optim.lr_scheduler import StepLR, CosineAnnealingLR, ReduceLROnPlateau
-from torch.utils.data import DataLoader, Dataset, Subset
+from torchvision import transforms
+from torch.utils.data import DataLoader, Dataset
 from torchvision.transforms import functional as F
-from torchvision.models.video import r3d_18, R3D_18_Weights, r2plus1d_18, R2Plus1D_18_Weights
-from sklearn.metrics import classification_report, f1_score, confusion_matrix
+from torchvision.models.video import r3d_18, R3D_18_Weights,  r2plus1d_18, R2Plus1D_18_Weights
+from sklearn.metrics import classification_report
 
 class VideoDataset(Dataset):
     def __init__(self, folder_path, labels_json_path, transform=None):
@@ -64,7 +60,7 @@ class VideoDataset(Dataset):
         # Load the video
         video, _, _ = read_video(video_path, pts_unit='sec')
 
-        if video.nelement() == 0:  # or any other condition indicating failure
+        if video.nelement() == 0:
             print(f"Failed to load video: {video_path}")
             return None, None
     
@@ -81,7 +77,6 @@ class VideoDataset(Dataset):
             return None, None
         
         label = torch.tensor(label)
-        # label = adjust_labels(label)
         return view, label
 
     def transform_video(self, video):
@@ -94,22 +89,6 @@ class VideoDataset(Dataset):
         video_tensor = torch.stack(transformed_frames)
         return video_tensor.permute(1, 0, 2, 3)
     
-    
-def plot_confusion_matrix(y_true, y_pred, classes, title='Confusion matrix', cm_filename='conf_matrix.png', cr_filename='clf_report.txt'):
-    # cm = confusion_matrix(y_true, y_pred)
-    # plt.figure(figsize=(8, 6))
-    # sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=classes, yticklabels=classes)
-    # plt.xlabel('Predicted')
-    # plt.ylabel('True')
-    # plt.title(title)
-    # plt.savefig(cm_filename)
-    # plt.show()
-    # plt.close()
-
-    report = classification_report(y_true, y_pred, target_names=classes)
-    with open(cr_filename, 'w') as f:
-        f.write(report)
-
 def train(train_loader, val_loader, test_loader, model, optimizer, criterion, num_epochs, scheduler):
     for epoch in range(num_epochs):
         model.train()
@@ -135,12 +114,10 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
 
         epoch_loss = train_loss / len(train_loader.dataset)
         current_lr = optimizer.param_groups[0]['lr']
-        # current_lr = "not relevant"
         print(f"Epoch {epoch+1}, Loss: {epoch_loss}, LR: {current_lr}")
         print('Training Classification Report:')
         print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
         sys.stdout.flush()
-        # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Training Confusion Matrix Epoch {epoch+1}', cm_filename=f'training_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'training_classification_report_epoch_{epoch+1}.txt')
 
         model.eval()
         val_loss = 0.0
@@ -167,7 +144,6 @@ def train(train_loader, val_loader, test_loader, model, optimizer, criterion, nu
         print('Validation Classification Report:')
         print(classification_report(all_labels, all_preds, target_names=['Class 0', 'Class 1']))
         sys.stdout.flush()
-        # plot_confusion_matrix(all_labels, all_preds, classes=['Class 0', 'Class 1'], title=f'Validation Confusion Matrix Epoch {epoch+1}', cm_filename=f'validation_confusion_matrix_epoch_{epoch+1}.png', cr_filename=f'validation_classification_report_epoch_{epoch+1}.txt')
 
         test(test_loader=test_loader, model=model, criterion=criterion)
 
@@ -202,14 +178,17 @@ def main():
     print("Start loading videos...\n")
     sys.stdout.flush()
 
-    train_transforms = transforms.Compose([
+    data_transforms = transforms.Compose([
         transforms.Resize(224), 
+        # Blur augmentation
         transforms.RandomApply([transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5))], p=0.5),
-        # transforms.RandomApply([transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.1)], p=0.8),
-        # transforms.RandomGrayscale(p=0.2),
-        # transforms.RandomHorizontalFlip(), 
-        # transforms.RandomRotation(degrees=15),
-        # transforms.CenterCrop(224),
+        # Color augmentation
+        transforms.RandomApply([transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.1)], p=0.8),
+        transforms.RandomGrayscale(p=0.2),
+        # Rotational augmentation
+        transforms.RandomHorizontalFlip(), 
+        transforms.RandomRotation(degrees=15),
+        transforms.CenterCrop(224),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
@@ -223,9 +202,9 @@ def main():
     test_folder = "./test_set"
     test_label_folder = "./split/metadata_test_split_by_date.json"
 
-    train_dataset = VideoDataset(train_folder, train_label_folder, transform=train_transforms)
-    val_dataset = VideoDataset(val_folder, val_label_folder, transform=train_transforms)
-    test_dataset = VideoDataset(test_folder, test_label_folder, transform=train_transforms)
+    train_dataset = VideoDataset(train_folder, train_label_folder, transform=data_transforms)
+    val_dataset = VideoDataset(val_folder, val_label_folder, transform=data_transforms)
+    test_dataset = VideoDataset(test_folder, test_label_folder, transform=data_transforms)
 
     train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
     val_loader = DataLoader(val_dataset, batch_size=8, shuffle=True, num_workers=0, pin_memory=True)
@@ -238,13 +217,14 @@ def main():
 
     # Load a pre-trained ResNet model and modify the final layer
     model_path = "final_data.pth"
+
+    # Uncomment to test R3D
     # weights = R3D_18_Weights.DEFAULT
     # self_supervised_model  = r3d_18(weights=weights)
 
+    # Comment to test R3D
     weights = R2Plus1D_18_Weights.DEFAULT
     self_supervised_model  = r2plus1d_18(weights=weights)
-
-    # self_supervised_model = Inception3D(num_classes=2)
     
     checkpoint = torch.load(model_path, map_location='cpu')
     self_supervised_model.load_state_dict(checkpoint['model_state_dict'], strict=False)
@@ -255,23 +235,20 @@ def main():
     
     # Add a linear layer on top for the classification task
     self_supervised_model.fc = nn.Identity()
-    num_ftrs = 512 #self_supervised_model.fc.in_features
-    self_supervised_model.fc = nn.Linear(num_ftrs, 2)  # Assuming binary classification
+    num_ftrs = 512
+    self_supervised_model.fc = nn.Linear(num_ftrs, 2)  # Binary classification
 
     self_supervised_model = self_supervised_model.to(device)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(self_supervised_model.parameters(), lr=1e-3, momentum=0.9, weight_decay=1e-4)
-    scheduler = ReduceLROnPlateau(optimizer, mode='min')
-
-    # if 'optimizer_state_dict' in checkpoint:
-    #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=2)
 
     # Train and evaluate the model
-    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=3, scheduler=scheduler) # , patience=5, min_delta=0.001
+    train(train_loader=train_loader, val_loader=val_loader, test_loader=test_loader, model=self_supervised_model, optimizer=optimizer, criterion=criterion, num_epochs=15, scheduler=scheduler) # , patience=5, min_delta=0.001
 
     # Save the trained model
-    # torch.save(self_supervised_model.state_dict(), 'linear_eval_model.pth')
+    torch.save(self_supervised_model.state_dict(), 'linear_eval_model.pth')
 
 if __name__ == "__main__":
     main()

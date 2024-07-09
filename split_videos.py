@@ -1,5 +1,5 @@
 """
-This script has been created to move videos from their source folder to a new train/val/test folder based on the split metadata file. The metadata was split in split_metadata.py.
+This script has been created to move videos from their source folder to a new train/val/test folder based on the split metadata file. The metadata was split in split_metadata.py, found in https://github.com/CMU-CREATE-Lab/deep-smoke-machine.
 """
 
 import os

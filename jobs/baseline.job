@@ -8,11 +8,11 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32
 #SBATCH --time=15:00:00
-#SBATCH --output=jobs/outputs/final_baseline_i3d_color.out
+#SBATCH --output=jobs/outputs/final_baseline.out
 
 cd /projects/0/prjs0935/spotting-toxic-clouds-thesis
 module load 2022
 module load Anaconda3/2022.05
 
 source activate dl2023
-srun python test_baseline.py
+srun python baseline.py
