@@ -3,9 +3,9 @@
 
  ## Data Infrastructure
  Data was sourced from: https://github.com/CMU-CREATE-Lab/deep-smoke-machine by following their instructions.
- - Unlabeled data can be found in 'full_dataset/'
- - Labeled data can be found in the 'train_set/', 'validation_set/', 'test_set/'
- - Split metadata files can be found in 'split/'
+ - Unlabeled data can be found in 'full_dataset'
+ - Labeled data can be found in the 'train_set', 'validation_set', 'test_set'
+ - Split metadata files can be found in 'split'
 
   ## Code Infrastructure
   - train.py: Contains the code for the implementation of SimCLR on unlabeled data
