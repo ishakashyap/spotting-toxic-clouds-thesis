@@ -44,7 +44,7 @@ class SimCLRVideo(pl.LightningModule):
         optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
         return optimizer
     
-    def info_nce_loss(self, projections, mode='train'):
+    def nt_xent_loss(self, projections, mode='train'):
         # Calculate cosine similarity
         cos_sim = nn.functional.cosine_similarity(projections[:, None, :], projections[None, :, :], dim=-1)
         # Mask out cosine similarity to itself
@@ -69,7 +69,7 @@ class SimCLRVideo(pl.LightningModule):
         views = torch.cat((view1, view2), dim=0)
 
         projections = self.forward(views)
-        loss = self.info_nce_loss(projections, mode='train')
+        loss = self.nt_xent_loss(projections, mode='train')
         return loss
 
     
